@@ -15,13 +15,20 @@
  * LICENSE file.                                                                                                                                                                   
  */
 
-package com.yahoo.ycsb;
+package com.yahoo.ycsb.shard;
 
 
 import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 
+import com.yahoo.ycsb.Client;
+import com.yahoo.ycsb.DB;
+import com.yahoo.ycsb.DBException;
+import com.yahoo.ycsb.DBFactory;
+import com.yahoo.ycsb.UnknownDBException;
+import com.yahoo.ycsb.Workload;
+import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
 import com.yahoo.ycsb.measurements.exporter.MeasurementsExporter;
 import com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter;
@@ -34,7 +41,7 @@ import com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter;
  * @author cooperb
  *
  */
-class StatusThread1 extends Thread
+class StatusThread extends Thread
 {
 	Vector<Thread> _threads;
 	String _label;
@@ -45,7 +52,7 @@ class StatusThread1 extends Thread
 	 */
 	public static final long sleeptime=10000;
 
-	public StatusThread1(Vector<Thread> threads, String label, boolean standardstatus)
+	public StatusThread(Vector<Thread> threads, String label, boolean standardstatus)
 	{
 		_threads=threads;
 		_label=label;
@@ -78,7 +85,7 @@ class StatusThread1 extends Thread
 					alldone=false;
 				}
 
-				ClientThread1 ct=(ClientThread1)t;
+				ClientThread ct=(ClientThread)t;
 				totalops+=ct.getOpsDone();
 			}
 
@@ -135,7 +142,7 @@ class StatusThread1 extends Thread
  * @author cooperb
  *
  */
-class ClientThread1 extends Thread
+class ClientThread extends Thread
 {
 	static Random random=new Random();
 
@@ -164,7 +171,7 @@ class ClientThread1 extends Thread
 	 * @param opcount the number of operations (transactions or inserts) to do
 	 * @param targetperthreadperms target number of operations per thread per ms
 	 */
-	public ClientThread1(DB db, boolean dotransactions, Workload workload, int threadid, int threadcount, Properties props, int opcount, double targetperthreadperms)
+	public ClientThread(DB db, boolean dotransactions, Workload workload, int threadid, int threadcount, Properties props, int opcount, double targetperthreadperms)
 	{
 		//TODO: consider removing threadcount and threadid
 		_db=db;
@@ -320,7 +327,7 @@ class ClientThread1 extends Thread
 /**
  * Main class for executing YCSB.
  */
-public class Client
+public class ShardClient
 {
 
 	public static final String OPERATION_COUNT_PROPERTY="operationcount";
@@ -425,15 +432,14 @@ public class Client
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public static void main(String[] args)
 	{
 		String dbname;
 		Properties props=new Properties();
 		Properties fileprops=new Properties();
 		boolean dotransactions=true;
-		int threadcount=1;
-		int target=0;
+		int threadcount=1;                      //Default client thread number: 1
+		int target=0;                           //Throughput per second of all clients
 		boolean status=false;
 		String label="";
 
@@ -446,8 +452,10 @@ public class Client
 			System.exit(0);
 		}
 
+		//Parse commandline argument
 		while (args[argindex].startsWith("-"))
 		{
+			//Client thread number
 			if (args[argindex].compareTo("-threads")==0)
 			{
 				argindex++;
@@ -460,6 +468,7 @@ public class Client
 				props.setProperty("threadcount", tcount+"");
 				argindex++;
 			}
+			//Throughput per second from all the clients
 			else if (args[argindex].compareTo("-target")==0)
 			{
 				argindex++;
@@ -472,21 +481,25 @@ public class Client
 				props.setProperty("target", ttarget+"");
 				argindex++;
 			}
+			//Don't do transaction, may not be useful
 			else if (args[argindex].compareTo("-load")==0)
 			{
 				dotransactions=false;
 				argindex++;
 			}
+			//Do transaction, may not be useful
 			else if (args[argindex].compareTo("-t")==0)
 			{
 				dotransactions=true;
 				argindex++;
 			}
+			//Start status thread or not
 			else if (args[argindex].compareTo("-s")==0)
 			{
 				status=true;
 				argindex++;
 			}
+			//Database client to use
 			else if (args[argindex].compareTo("-db")==0)
 			{
 				argindex++;
@@ -498,6 +511,7 @@ public class Client
 				props.setProperty("db",args[argindex]);
 				argindex++;
 			}
+			//Label output from statusthread
 			else if (args[argindex].compareTo("-l")==0)
 			{
 				argindex++;
@@ -509,6 +523,7 @@ public class Client
 				label=args[argindex];
 				argindex++;
 			}
+			//Set property from file
 			else if (args[argindex].compareTo("-P")==0)
 			{
 				argindex++;
@@ -532,7 +547,7 @@ public class Client
 				}
 
 				//Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
-				for (Enumeration e=myfileprops.propertyNames(); e.hasMoreElements(); )
+				for (Enumeration<?> e=myfileprops.propertyNames(); e.hasMoreElements(); )
 				{
 				   String prop=(String)e.nextElement();
 				   
@@ -540,6 +555,7 @@ public class Client
 				}
 
 			}
+			//Set property from commandline
 			else if (args[argindex].compareTo("-p")==0)
 			{
 				argindex++;
@@ -586,7 +602,7 @@ public class Client
 		//overwrite file properties with properties from the command line
 
 		//Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
-		for (Enumeration e=props.propertyNames(); e.hasMoreElements(); )
+		for (Enumeration<?> e=props.propertyNames(); e.hasMoreElements(); )
 		{
 		   String prop=(String)e.nextElement();
 		   
@@ -653,7 +669,9 @@ public class Client
 
 		try 
 		{
-			Class workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
+			//WORKLOAD_PROPERTY is from commandline or file
+			//For pointing to the workload to use
+			Class<?> workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
 
 			workload=(Workload)workloadclass.newInstance();
 		}
@@ -713,13 +731,13 @@ public class Client
 				System.exit(0);
 			}
 
-			Thread t=new ClientThread1(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
+			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
 
 			threads.add(t);
 			//t.start();
 		}
 
-		StatusThread1 statusthread=null;
+		StatusThread statusthread=null;
 
 		if (status)
 		{
@@ -728,7 +746,7 @@ public class Client
 			{
 				standardstatus=true;
 			}	
-			statusthread=new StatusThread1(threads,label,standardstatus);
+			statusthread=new StatusThread(threads,label,standardstatus);
 			statusthread.start();
 		}
 
