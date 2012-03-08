@@ -22,12 +22,7 @@ import java.io.*;
 import java.text.DecimalFormat;
 import java.util.*;
 
-import com.yahoo.ycsb.Client;
-import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
-import com.yahoo.ycsb.DBFactory;
-import com.yahoo.ycsb.UnknownDBException;
-import com.yahoo.ycsb.Workload;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
 import com.yahoo.ycsb.measurements.exporter.MeasurementsExporter;
@@ -146,9 +141,9 @@ class ClientThread extends Thread
 {
 	static Random random=new Random();
 
-	DB _db;
+	ShardDB _db;
 	boolean _dotransactions;
-	Workload _workload;
+	ShardWorkload _workload;
 	int _opcount;
 	double _target;
 
@@ -171,7 +166,7 @@ class ClientThread extends Thread
 	 * @param opcount the number of operations (transactions or inserts) to do
 	 * @param targetperthreadperms target number of operations per thread per ms
 	 */
-	public ClientThread(DB db, boolean dotransactions, Workload workload, int threadid, int threadcount, Properties props, int opcount, double targetperthreadperms)
+	public ClientThread(ShardDB db, boolean dotransactions, ShardWorkload workload, int threadid, int threadcount, Properties props, int opcount, double targetperthreadperms)
 	{
 		//TODO: consider removing threadcount and threadid
 		_db=db;
@@ -198,17 +193,6 @@ class ClientThread extends Thread
 			_db.init();
 		}
 		catch (DBException e)
-		{
-			e.printStackTrace();
-			e.printStackTrace(System.out);
-			return;
-		}
-
-		try
-		{
-			_workloadstate=_workload.initThread(_props,_threadid,_threadcount);
-		}
-		catch (WorkloadException e)
 		{
 			e.printStackTrace();
 			e.printStackTrace(System.out);
@@ -275,10 +259,10 @@ class ClientThread extends Thread
 				while ( (_opcount==0) || (_opsdone<_opcount) )
 				{
 
-					if (!_workload.doInsert(_db,_workloadstate))
+					/*if (!_workload.doInsert(_db,_workloadstate))
 					{
 						break;
-					}
+					}*/
 
 					_opsdone++;
 
@@ -434,7 +418,6 @@ public class ShardClient
 	
 	public static void main(String[] args)
 	{
-		String dbname;
 		Properties props=new Properties();
 		Properties fileprops=new Properties();
 		boolean dotransactions=true;
@@ -618,7 +601,6 @@ public class ShardClient
 
 		//get number of threads, target and db
 		threadcount=Integer.parseInt(props.getProperty("threadcount","1"));
-		dbname=props.getProperty("db","com.yahoo.ycsb.BasicDB");
 		target=Integer.parseInt(props.getProperty("target","0"));
 		
 		//compute the target throughput
@@ -661,26 +643,8 @@ public class ShardClient
 		
 		//set up measurements
 		Measurements.setProperties(props);
-		
-		//load the workload
-		ClassLoader classLoader = Client.class.getClassLoader();
 
-		Workload workload=null;
-
-		try 
-		{
-			//WORKLOAD_PROPERTY is from commandline or file
-			//For pointing to the workload to use
-			Class<?> workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
-
-			workload=(Workload)workloadclass.newInstance();
-		}
-		catch (Exception e) 
-		{  
-			e.printStackTrace();
-			e.printStackTrace(System.out);
-			System.exit(0);
-		}
+		ShardWorkload workload = new ShardWorkload();
 
 		try
 		{
@@ -720,16 +684,8 @@ public class ShardClient
 
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
-			DB db=null;
-			try
-			{
-				db=DBFactory.newDB(dbname,props);
-			}
-			catch (UnknownDBException e)
-			{
-				System.out.println("Unknown DB "+dbname);
-				System.exit(0);
-			}
+			ShardDB db = new ShardDBClient();
+			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
 
@@ -773,17 +729,6 @@ public class ShardClient
 		if (status)
 		{
 			statusthread.interrupt();
-		}
-
-		try
-		{
-			workload.cleanup();
-		}
-		catch (WorkloadException e)
-		{
-			e.printStackTrace();
-			e.printStackTrace(System.out);
-			System.exit(0);
 		}
 
 		try

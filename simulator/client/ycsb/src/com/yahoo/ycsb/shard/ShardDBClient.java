@@ -1,11 +1,8 @@
 package com.yahoo.ycsb.shard;
 
 import java.util.HashMap;
-import java.util.Iterator;
-import java.util.Properties;
 import java.util.Set;
 import java.util.Vector;
-import com.yahoo.ycsb.DB;
 import com.yahoo.ycsb.DBException;
 
 /**

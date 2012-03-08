@@ -10,7 +10,6 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import com.yahoo.ycsb.generator.ZipfianGenerator;
-import com.yahoo.ycsb.measurements.Measurements;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -38,9 +37,10 @@ import java.util.Vector;
  * <LI><b>insertorder</b>: should records be inserted in order by key ("ordered"), or in hashed order ("hashed") (default: hashed)
  * </ul> 
  */
-public class ShardWorkload extends Workload
+public class ShardWorkload
 {
 
+	private HashMap<Integer, byte[]> IntKeyMap;
 	/**
 	 * The name of the database table to run queries against.
 	 */
@@ -77,7 +77,18 @@ public class ShardWorkload extends Workload
 	public static final String FIELD_LENGTH_PROPERTY_DEFAULT="100";
 
 	int fieldlength;
-
+	
+	/**
+	 * The name of the property for the length of a key in bytes
+	 */
+	public static final String KEY_LENGTH_RROPERTY = "keylength";
+	
+	/**
+	 * The default length of a key in bytes
+	 */
+	public static final String KEY_LENGTH_PROPERTY_DEFAULT = "100";
+	
+	int keylength;
 	/**
 	 * The name of the property for deciding whether to read one field (false) or all fields (true) of a record.
 	 */
@@ -230,6 +241,7 @@ public class ShardWorkload extends Workload
 		table = p.getProperty(TABLENAME_PROPERTY,TABLENAME_PROPERTY_DEFAULT);
 		fieldcount=Integer.parseInt(p.getProperty(FIELD_COUNT_PROPERTY,FIELD_COUNT_PROPERTY_DEFAULT));
 		fieldlength=Integer.parseInt(p.getProperty(FIELD_LENGTH_PROPERTY,FIELD_LENGTH_PROPERTY_DEFAULT));
+		keylength = Integer.parseInt(p.getProperty(KEY_LENGTH_RROPERTY, KEY_LENGTH_PROPERTY_DEFAULT));
 		double readproportion=Double.parseDouble(p.getProperty(READ_PROPORTION_PROPERTY,READ_PROPORTION_PROPERTY_DEFAULT));
 		double updateproportion=Double.parseDouble(p.getProperty(UPDATE_PROPORTION_PROPERTY,UPDATE_PROPORTION_PROPERTY_DEFAULT));
 		double insertproportion=Double.parseDouble(p.getProperty(INSERT_PROPORTION_PROPERTY,INSERT_PROPORTION_PROPERTY_DEFAULT));
@@ -239,8 +251,7 @@ public class ShardWorkload extends Workload
 		String requestdistrib=p.getProperty(REQUEST_DISTRIBUTION_PROPERTY,REQUEST_DISTRIBUTION_PROPERTY_DEFAULT);
 		int maxscanlength=Integer.parseInt(p.getProperty(MAX_SCAN_LENGTH_PROPERTY,MAX_SCAN_LENGTH_PROPERTY_DEFAULT));
 		String scanlengthdistrib=p.getProperty(SCAN_LENGTH_DISTRIBUTION_PROPERTY,SCAN_LENGTH_DISTRIBUTION_PROPERTY_DEFAULT);
-		
-		int insertstart=Integer.parseInt(p.getProperty(INSERT_START_PROPERTY,INSERT_START_PROPERTY_DEFAULT));
+		int insertstart=Integer.parseInt(p.getProperty(Workload.INSERT_START_PROPERTY,Workload.INSERT_START_PROPERTY_DEFAULT));
 		
 		readallfields=Boolean.parseBoolean(p.getProperty(READ_ALL_FIELDS_PROPERTY,READ_ALL_FIELDS_PROPERTY_DEFAULT));
 		writeallfields=Boolean.parseBoolean(p.getProperty(WRITE_ALL_FIELDS_PROPERTY,WRITE_ALL_FIELDS_PROPERTY_DEFAULT));
@@ -323,6 +334,8 @@ public class ShardWorkload extends Workload
 		{
 			throw new WorkloadException("Distribution \""+scanlengthdistrib+"\" not allowed for scan length");
 		}
+		
+		IntKeyMap = new HashMap<Integer, byte[]>();
 	}
 
 	/**
@@ -358,7 +371,7 @@ public class ShardWorkload extends Workload
 	 * other, and it will be difficult to reach the target throughput. Ideally, this function would have no side
 	 * effects other than DB operations.
 	 */
-	public boolean doTransaction(DB db, Object threadstate)
+	public boolean doTransaction(ShardDB db, Object threadstate)
 	{
 		String op=operationchooser.nextString();
 
@@ -386,7 +399,7 @@ public class ShardWorkload extends Workload
 		return true;
 	}
 
-	public void doTransactionRead(DB db)
+	public void doTransactionRead(ShardDB db)
 	{
 		//choose a random key
 		int keynum;
@@ -400,26 +413,17 @@ public class ShardWorkload extends Workload
 		{
 			keynum=Utils.hash(keynum);
 		}
-		String keyname="user"+keynum;
+		
+		byte[] key = IntKeyMap.get(keynum);
+		byte[] result = null;
 
-		HashSet<String> fields=null;
-
-		if (!readallfields)
-		{
-			//read a random field  
-			String fieldname="field"+fieldchooser.nextString();
-
-			fields=new HashSet<String>();
-			fields.add(fieldname);
-		}
-
-		db.read(table,keyname,fields,new HashMap<String,String>());
+		db.read(key, result);
 	}
 	
-	public void doTransactionReadModifyWrite(DB db)
+	public void doTransactionReadModifyWrite(ShardDB db)
 	{
 		//choose a random key
-		int keynum;
+		/*int keynum;
 		do
 		{
 			keynum=keychooser.nextInt();
@@ -473,10 +477,10 @@ public class ShardWorkload extends Workload
 
 		long en=System.currentTimeMillis();
 		
-		Measurements.getMeasurements().measure("READ-MODIFY-WRITE", (int)(en-st));
+		Measurements.getMeasurements().measure("READ-MODIFY-WRITE", (int)(en-st));*/
 	}
 	
-	public void doTransactionScan(DB db)
+	public void doTransactionScan(ShardDB db)
 	{
 		//choose a random key
 		int keynum;
@@ -509,7 +513,7 @@ public class ShardWorkload extends Workload
 		db.scan(table,startkeyname,len,fields,new Vector<HashMap<String,String>>());
 	}
 
-	public void doTransactionUpdate(DB db)
+	public void doTransactionUpdate(ShardDB db)
 	{
 		//choose a random key
 		int keynum;
@@ -523,32 +527,14 @@ public class ShardWorkload extends Workload
 		{
 			keynum=Utils.hash(keynum);
 		}
-		String keyname="user"+keynum;
+		byte[] key = IntKeyMap.get(keynum);
+		String stringValue = Utils.ASCIIString(fieldlength);
+		byte[] value = stringValue.getBytes();
 
-		HashMap<String,String> values=new HashMap<String,String>();
-
-		if (writeallfields)
-		{
-		   //new data for all the fields
-		   for (int i=0; i<fieldcount; i++)
-		   {
-		      String fieldname="field"+i;
-		      String data=Utils.ASCIIString(fieldlength);		   
-		      values.put(fieldname,data);
-		   }
-		}
-		else
-		{
-		   //update a random field
-		   String fieldname="field"+fieldchooser.nextString();
-		   String data=Utils.ASCIIString(fieldlength);		   
-		   values.put(fieldname,data);
-		}
-
-		db.update(table,keyname,values);
+		db.update(key, value);
 	}
 
-	public void doTransactionInsert(DB db)
+	public void doTransactionInsert(ShardDB db)
 	{
 		//choose the next key
 		int keynum=transactioninsertkeysequence.nextInt();
@@ -556,15 +542,11 @@ public class ShardWorkload extends Workload
 		{
 			keynum=Utils.hash(keynum);
 		}
-		String dbkey="user"+keynum;
-		
-		HashMap<String,String> values=new HashMap<String,String>();
-		for (int i=0; i<fieldcount; i++)
-		{
-			String fieldkey="field"+i;
-			String data=Utils.ASCIIString(fieldlength);
-			values.put(fieldkey,data);
-		}
-		db.insert(table,dbkey,values);
+		String stringKey = Utils.ASCIIString(keylength);
+		byte[] key = stringKey.getBytes();
+		String stringValue = Utils.ASCIIString(fieldlength);
+		byte[] value = stringValue.getBytes();
+		IntKeyMap.put(keynum, value);
+		db.insert(key, value);
 	}
 }
