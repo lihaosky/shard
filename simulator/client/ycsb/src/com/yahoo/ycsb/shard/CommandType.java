@@ -9,7 +9,7 @@ public class CommandType {
 	/**
 	 * Read from server db
 	 */
-	public static final int READ = 0;
+	public static final int READ = 0; 
 	/**
 	 * Insert into server db
 	 */
