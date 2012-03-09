@@ -43,7 +43,12 @@ public class ShardServerConnection {
 		int totalLength =  headerLength + key.length + value.length;
 		//Source to be done
 		writeHeader(totalLength, time, CommandType.INSERT, 0, serverID, key.length);
-		
+		try {
+			dos.write(key);
+			dos.write(value);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		
 		return true;
 	}
@@ -56,11 +61,10 @@ public class ShardServerConnection {
 	 */
 	public boolean delete(long time, byte[] key, int serverID) {
 		int totalLength = headerLength + key.length;
-		
+		//Source to be done
+		writeHeader(totalLength, time, CommandType.DELETE, 0, serverID, key.length);
 		try {
-			dos.writeInt(totalLength);
-			dos.writeLong(time);
-			
+			dos.write(key);
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
@@ -75,6 +79,14 @@ public class ShardServerConnection {
 	 * @return Value 
 	 */
 	public boolean read(long time, byte[] key, byte[] value, int serverID) {
+		int totalLength = headerLength + key.length;
+		//Source to be done
+		writeHeader(totalLength, time, CommandType.READ, 0, serverID, key.length);
+		try {
+			dos.write(key);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 	
@@ -86,6 +98,15 @@ public class ShardServerConnection {
 	 * @return true if successful, false if not
 	 */
 	public boolean update(long time, byte[] key, byte[] value, int serverID) {
+		int totalLength = headerLength + key.length + value.length;
+		//Source to be done
+		writeHeader(totalLength, time, CommandType.UPDATE, 0, serverID, key.length);
+		try {
+			dos.write(key);
+			dos.write(value);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 	
