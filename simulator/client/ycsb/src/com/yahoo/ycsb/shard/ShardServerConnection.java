@@ -17,6 +17,7 @@ public class ShardServerConnection {
 	 * Data output stream for the socket 
 	 */
 	private DataOutputStream dos;
+	private int headerLength = 4 + 8 + 4 + 4 + 4 + 4;
 	
 	public ShardServerConnection(String hostname, int port) {
 		try {
@@ -38,7 +39,12 @@ public class ShardServerConnection {
 	 * @param value Value to be inserted
 	 * @return true if successful, false if not
 	 */
-	public boolean insert(long time, byte[] key, byte[] value) {
+	public boolean insert(long time, byte[] key, byte[] value, int serverID) {
+		int totalLength =  headerLength + key.length + value.length;
+		//Source to be done
+		writeHeader(totalLength, time, CommandType.INSERT, 0, serverID, key.length);
+		
+		
 		return true;
 	}
 	
@@ -48,7 +54,16 @@ public class ShardServerConnection {
 	 * @param key Key to be deleted
 	 * @return true if successful, false if not
 	 */
-	public boolean delete(long time, byte[] key) {
+	public boolean delete(long time, byte[] key, int serverID) {
+		int totalLength = headerLength + key.length;
+		
+		try {
+			dos.writeInt(totalLength);
+			dos.writeLong(time);
+			
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 		return true;
 	}
 	
@@ -59,7 +74,7 @@ public class ShardServerConnection {
 	 * @param value Value read
 	 * @return Value 
 	 */
-	public boolean read(long time, byte[] key, byte[] value) {
+	public boolean read(long time, byte[] key, byte[] value, int serverID) {
 		return true;
 	}
 	
@@ -70,7 +85,21 @@ public class ShardServerConnection {
 	 * @param value new Value
 	 * @return true if successful, false if not
 	 */
-	public boolean update(long time, byte[] key, byte[] value) {
+	public boolean update(long time, byte[] key, byte[] value, int serverID) {
 		return true;
+	}
+	
+	private void writeHeader(int totalLength, long time, int command, int source, int serverID, int keyLength) {
+		try {
+			dos.writeInt(totalLength);
+			dos.writeLong(time);
+			dos.writeInt(CommandType.INSERT);
+			//Write the IP of client, to be done
+			dos.writeInt(serverID);
+			dos.writeInt(keyLength);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 	}
 }

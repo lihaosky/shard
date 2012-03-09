@@ -684,7 +684,7 @@ public class ShardClient
 
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
-			ShardDB db = new ShardDBClient();
+			ShardDB db = new ShardDBClient(0);   //Need to set the latency for db...
 			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
