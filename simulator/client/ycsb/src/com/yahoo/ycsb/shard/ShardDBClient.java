@@ -1,9 +1,6 @@
 package com.yahoo.ycsb.shard;
 
-import java.util.HashMap;
 import java.util.Properties;
-import java.util.Set;
-import java.util.Vector;
 import com.yahoo.ycsb.DBException;
 
 /**
@@ -29,7 +26,7 @@ public class ShardDBClient extends ShardDB {
 	}
 	
 	/**
-	 * Inialization
+	 * Initialization
 	 */
 	public void init() throws DBException {
 		Properties prop = super.getProperties();
@@ -47,14 +44,6 @@ public class ShardDBClient extends ShardDB {
 		int serverID = findServerID();
 		ssc.read(computeReachTime(), key, value, serverID);
 		return false;
-	}
-
-	/**
-	 * May not need this...
-	 */
-	public int scan(String table, String startkey, int recordcount,
-			Set<String> fields, Vector<HashMap<String, String>> result) {
-		return 0;
 	}
 
 	/**

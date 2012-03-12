@@ -21,7 +21,7 @@ public class ShardServerConnection {
 	 * Total packet length:      4 bytes int
 	 * Time to arrive at server: 8 bytes long
 	 * Command type:             4 bytes int
-	 * Source ip address:        4 bytes int
+	 * Source IP address:        4 bytes int
 	 * Server ID:                4 bytes int 
 	 */
 	private int headerLength = 4 + 8 + 4 + 4 + 4;
