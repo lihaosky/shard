@@ -114,7 +114,7 @@ public class CommandLine
 		  System.exit(0);
 	       }
 	       
-	       for (Enumeration e=myfileprops.propertyNames(); e.hasMoreElements(); )
+	       for (Enumeration<?> e=myfileprops.propertyNames(); e.hasMoreElements(); )
 	       {
 		  String prop=(String)e.nextElement();
 		  
@@ -173,7 +173,7 @@ public class CommandLine
 	    System.exit(0);
 	 }
 
-	 for (Enumeration e=props.propertyNames(); e.hasMoreElements(); )
+	 for (Enumeration<?> e=props.propertyNames(); e.hasMoreElements(); )
 	 {
 	    String prop=(String)e.nextElement();
 	    
@@ -195,7 +195,7 @@ public class CommandLine
 
 	 try 
 	 {
-	    Class dbclass = classLoader.loadClass(dbname);
+	    Class<?> dbclass = classLoader.loadClass(dbname);
 	    db=(DB)dbclass.newInstance();
 	 }
 	 catch (Exception e) 

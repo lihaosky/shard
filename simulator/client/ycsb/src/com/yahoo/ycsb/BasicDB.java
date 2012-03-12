@@ -67,7 +67,6 @@ public class BasicDB extends DB
 	 * Initialize any state for this DB.
 	 * Called once per DB instance; there is one DB instance per client thread.
 	 */
-	@SuppressWarnings("unchecked")
 	public void init()
 	{
 		verbose=Boolean.parseBoolean(getProperties().getProperty(VERBOSE, VERBOSE_DEFAULT));
@@ -79,7 +78,7 @@ public class BasicDB extends DB
 			Properties p=getProperties();
 			if (p!=null)
 			{
-				for (Enumeration e=p.propertyNames(); e.hasMoreElements(); )
+				for (Enumeration<?> e=p.propertyNames(); e.hasMoreElements(); )
 				{
 					String k=(String)e.nextElement();
 					System.out.println("\""+k+"\"=\""+p.getProperty(k)+"\"");

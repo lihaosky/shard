@@ -425,7 +425,6 @@ public class Client
 		}
 	}
 	
-	@SuppressWarnings("unchecked")
 	public static void main(String[] args)
 	{
 		String dbname;
@@ -532,7 +531,7 @@ public class Client
 				}
 
 				//Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
-				for (Enumeration e=myfileprops.propertyNames(); e.hasMoreElements(); )
+				for (Enumeration<?> e=myfileprops.propertyNames(); e.hasMoreElements(); )
 				{
 				   String prop=(String)e.nextElement();
 				   
@@ -586,7 +585,7 @@ public class Client
 		//overwrite file properties with properties from the command line
 
 		//Issue #5 - remove call to stringPropertyNames to make compilable under Java 1.5
-		for (Enumeration e=props.propertyNames(); e.hasMoreElements(); )
+		for (Enumeration<?> e=props.propertyNames(); e.hasMoreElements(); )
 		{
 		   String prop=(String)e.nextElement();
 		   
@@ -653,7 +652,7 @@ public class Client
 
 		try 
 		{
-			Class workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
+			Class<?> workloadclass = classLoader.loadClass(props.getProperty(WORKLOAD_PROPERTY));
 
 			workload=(Workload)workloadclass.newInstance();
 		}
