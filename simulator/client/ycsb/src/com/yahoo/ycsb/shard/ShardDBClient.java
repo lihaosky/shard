@@ -40,16 +40,17 @@ public class ShardDBClient extends ShardDB {
 	
 	/**
 	 * Read from server
+	 * @param key Key
+	 * @param value Results stored in value
 	 */
 	public boolean read(byte[] key, byte[] value) {
-		long reachTime = System.currentTimeMillis() + latency;
 		int serverID = findServerID();
-		ssc.read(reachTime, key, value, serverID);
+		ssc.read(computeReachTime(), key, value, serverID);
 		return false;
 	}
 
 	/**
-	 * 
+	 * May not need this...
 	 */
 	public int scan(String table, String startkey, int recordcount,
 			Set<String> fields, Vector<HashMap<String, String>> result) {
@@ -58,36 +59,50 @@ public class ShardDBClient extends ShardDB {
 
 	/**
 	 * Update to server
+	 * @param key Key
+	 * @param value Results stored in value
 	 */
 	public boolean update(byte[] key, byte[] value) {
-		long reachTime = System.currentTimeMillis() + latency;
 		int serverID = findServerID();
-		ssc.update(reachTime, key, value, serverID);
+		ssc.update(computeReachTime(), key, value, serverID);
 		return false;
 	}
 
 	/**
 	 * Insert to server
+	 * @param Key key
+	 * @param value Results stored in value
 	 */
 	public boolean insert(byte[] key, byte[] value) {
-		long reachTime = System.currentTimeMillis() + latency;
 		int serverID = findServerID();
-		ssc.insert(reachTime, key, value, serverID);
+		ssc.insert(computeReachTime(), key, value, serverID);
 		return false;
 	}
 
 	/**
 	 * Delete from server
+	 * @param key Key
 	 */
 	public boolean delete(byte[] key) {
-		long reachTime = System.currentTimeMillis() + latency;
 		int serverID = findServerID();
-		ssc.delete(reachTime, key, serverID);
+		ssc.delete(computeReachTime(), key, serverID);
 		return false;
 	}
 	
+	/**
+	 * Find the serverID to contact
+	 * @return ServerID
+	 */
 	private int findServerID() {
 		return 0;
+	}
+	
+	/**
+	 * Compute the reach time of server in milliseconds to epoch.
+	 * @return Reach time of server
+	 */
+	private long computeReachTime() {
+		return System.currentTimeMillis() + latency;
 	}
 
 }
