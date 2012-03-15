@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <stdarg.h>
 #include <stdint.h>
-
+#include <iostream>
 // internal include files
 #include "common_utils.h"
 
@@ -22,6 +22,8 @@
 #include <net/if.h>
 #include <sys/time.h>
 #endif
+
+using namespace std;
 
 // WINDOWS portability: this code has been ported.
 
@@ -764,6 +766,105 @@ int cu_read_crlfcrlf_terminated_block_from_socket(int client_socket, char* buffe
 
 fail:
 	return -1;
+}
+
+
+int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_time, int* command_type) {
+
+	int read_status = 0;
+	int offset = 0;
+
+	//Read total data length
+    //First 4 bytes: type int
+	while(1) {
+		read_status = recv(socket_id, ((char*)data_length) + offset, sizeof(int) - offset, 0);
+		if (read_status == -1){
+			if (errno == EINTR) {
+				continue;
+            } else {
+                return -1;
+            }
+		} else if (read_status == 0) {
+            return -1;
+        } else {
+			offset += read_status;
+        }
+
+		if (offset == sizeof(int))
+			break;
+	}
+
+	//Get data_length from network byte order 
+	*data_length = ntohl(*data_length);
+
+    read_status = 0;
+    offset = 0;
+    long temp;
+    //Read arrival time
+    //8 bytes: type long
+    while (1) {
+        read_status = recv(socket_id, ((char*)&temp) + offset, sizeof(long) - offset, 0);
+        if (read_status == -1) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                return -1;
+            }
+        } else if (read_status == 0) {
+            return -1;
+        } else {
+            offset += read_status;
+        }
+
+        if (offset == sizeof(long)) {
+            break;
+        }
+    }
+
+    int t = temp;
+
+    //Right order
+    if (t == ntohl(t)) {
+        *arrival_time = temp;
+    } else {
+        char *p = ((char*)&temp) + sizeof(long) - 1;
+        char *q = (char*)arrival_time;
+
+        for (int i = 0; i < sizeof(long); i++) {
+             *q = *p;
+             q++;
+             p--;
+        }
+    }
+
+    read_status = 0;
+    offset = 0;
+
+    //Read command type 
+    //4 bytes: type int 
+    while (1) {
+        read_status = recv(socket_id, ((char*)command_type) + offset, sizeof(int) - offset, 0);
+        if (read_status == -1) {
+            if (errno == EINTR) {
+                continue;
+            } else {
+                return -1;
+            }
+        } else if (read_status == 0) {
+            return -1;
+        } else {
+            offset += read_status;
+        }
+
+        if (offset == sizeof(int)) {
+            break;
+        }
+    }
+
+    *command_type = ntohl(*command_type);
+
+    return 0;
+
 }
 
 // displays an error message and exits (windows)
