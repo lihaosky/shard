@@ -1,0 +1,105 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+CC	Makefile	/^CC = g++$/;"	m
+CCOPTS	Makefile	/^CCOPTS = -c -g -Wall -ggdb -funsigned-char$/;"	m
+DELTA_EPOCH_IN_MICROSECS	common_utils.h	140;"	d
+DELTA_EPOCH_IN_MICROSECS	common_utils.h	142;"	d
+GATEWAY_CONTROL_PORT	gateway_controller.h	1;"	d
+IP_ADDRESS_LENGTH	common_utils.h	43;"	d
+LINKOPTS	Makefile	/^LINKOPTS = -g -pthread$/;"	m
+SET_PRIMARY_SERVER	gateway_commands.h	/^enum { SET_PRIMARY_SERVER=1, TRANSFER_CONNECTION };$/;"	e	enum:__anon2
+SOCKET	common_utils.h	/^typedef int SOCKET;$/;"	t
+TRANSFER_CONNECTION	gateway_commands.h	/^enum { SET_PRIMARY_SERVER=1, TRANSFER_CONNECTION };$/;"	e	enum:__anon2
+WIN32_LEAN_AND_MEAN	common_utils.h	8;"	d
+_WIN32_WINNT	common_utils.h	10;"	d
+__COMMON_UTILITIES_MODULE	common_utils.h	2;"	d
+__GATEWAY_COMMANDS	gateway_commands.h	2;"	d
+__STRUCT_TIMEZONE	common_utils.h	146;"	d
+__cu_internal_subtract_times	common_utils.cpp	/^ULONGLONG __cu_internal_subtract_times(const FILETIME& final_time, const FILETIME& initial_time)$/;"	f
+_connections_open	common_utils.cpp	/^int _connections_open = 0;$/;"	v
+_cu_sock_info	common_utils.h	/^struct _cu_sock_info $/;"	s
+_cu_sockinfo	common_utils.h	/^typedef struct _cu_sock_info _cu_sockinfo;$/;"	t	typeref:struct:_cu_sock_info
+_cu_sockinfo_head	common_utils.cpp	/^_cu_sockinfo* _cu_sockinfo_head = NULL;$/;"	v
+_gateway_command	gateway_commands.h	/^} _gateway_command;$/;"	t	typeref:struct:__anon1
+_sock_info_lock	common_utils.cpp	/^pthread_mutex_t _sock_info_lock = PTHREAD_MUTEX_INITIALIZER;$/;"	v
+_total_bytes_received	common_utils.cpp	/^int _total_bytes_received = 0;$/;"	v
+_total_bytes_sent	common_utils.cpp	/^int _total_bytes_sent = 0;$/;"	v
+add_connection	common_utils.cpp	/^static void add_connection(int socket_id)$/;"	f	file:
+bytes_received	common_utils.h	/^	int bytes_received;$/;"	m	struct:_cu_sock_info
+bytes_sent	common_utils.h	/^	int bytes_sent;$/;"	m	struct:_cu_sock_info
+close	common_utils.cpp	/^void close(SOCKET socket_id)$/;"	f
+command_id	gateway_commands.h	/^	char command_id;$/;"	m	struct:__anon1
+cu_accept	common_utils.cpp	/^int cu_accept(int *client_socket, int listening_socket)$/;"	f
+cu_alloc	common_utils.cpp	/^void* cu_alloc(uint32_t number_of_bytes)$/;"	f
+cu_calculate_time_difference	common_utils.cpp	/^double cu_calculate_time_difference(struct timeval end_time, struct timeval start_time)$/;"	f
+cu_close	common_utils.cpp	/^int cu_close(int socket_id)$/;"	f
+cu_connect	common_utils.cpp	/^int cu_connect(int* socket_id, const char* address, uint16_t port)$/;"	f
+cu_copy_ip_address	common_utils.cpp	/^void cu_copy_ip_address(char* dest_addr_buf, const char* src_addr_buf)$/;"	f
+cu_debug_file_count	common_utils.cpp	/^int cu_debug_file_count = 0;$/;"	v
+cu_error	common_utils.cpp	/^void cu_error(const char* error_message, ...)$/;"	f
+cu_generate_random_number	common_utils.cpp	/^int cu_generate_random_number(int lower_bound, int upper_bound)$/;"	f
+cu_get_bytes_received	common_utils.cpp	/^int cu_get_bytes_received(int socket_id)$/;"	f
+cu_get_bytes_sent	common_utils.cpp	/^int cu_get_bytes_sent(int socket_id)$/;"	f
+cu_get_cpu_utilization	common_utils.cpp	/^double cu_get_cpu_utilization()$/;"	f
+cu_get_local_ip_address	common_utils.cpp	/^int cu_get_local_ip_address(char* addr_buf)$/;"	f
+cu_get_remote_ip_address	common_utils.cpp	/^int cu_get_remote_ip_address(int socket_id, char* address_buffer, uint16_t* port_buffer)$/;"	f
+cu_get_sockaddr	common_utils.cpp	/^int cu_get_sockaddr(int socket_id, struct sockaddr_in *destination)$/;"	f
+cu_get_socket_data	common_utils.cpp	/^void cu_get_socket_data(int* total_sockets, _cu_sockinfo** dest)$/;"	f
+cu_get_time_elapsed_to_now	common_utils.cpp	/^double cu_get_time_elapsed_to_now(struct timeval start_time)$/;"	f
+cu_get_total_bytes_received	common_utils.cpp	/^int cu_get_total_bytes_received()$/;"	f
+cu_get_total_bytes_sent	common_utils.cpp	/^int cu_get_total_bytes_sent()$/;"	f
+cu_get_total_connections_open	common_utils.cpp	/^int cu_get_total_connections_open()$/;"	f
+cu_improved_sleep	common_utils.cpp	/^void cu_improved_sleep(double interval)$/;"	f
+cu_initialize_network	common_utils.cpp	/^void cu_initialize_network()$/;"	f
+cu_listen	common_utils.cpp	/^int cu_listen(int* socket_id, uint16_t port)$/;"	f
+cu_message	common_utils.cpp	/^void cu_message(const void* message, ...)$/;"	f
+cu_read_bool_from_socket	common_utils.cpp	/^int cu_read_bool_from_socket(int client_socket, bool* result)$/;"	f
+cu_read_crlfcrlf_terminated_block_from_socket	common_utils.cpp	/^int cu_read_crlfcrlf_terminated_block_from_socket(int client_socket, char* buffer, int buffer_size)$/;"	f
+cu_read_data_item	common_utils.cpp	/^int cu_read_data_item(int socket_id, void* buffer, int buf_len)$/;"	f
+cu_read_data_item_auto_alloc	common_utils.cpp	/^int cu_read_data_item_auto_alloc(int socket_id, char** buf)$/;"	f
+cu_read_double_from_socket	common_utils.cpp	/^int cu_read_double_from_socket(int socket_id, double* result)$/;"	f
+cu_read_fixed_bytes_from_socket	common_utils.cpp	/^int cu_read_fixed_bytes_from_socket(int socket_id, int number_of_bytes, void* buffer)$/;"	f
+cu_read_float_from_socket	common_utils.cpp	/^int cu_read_float_from_socket(int socket_id, float* result)$/;"	f
+cu_read_int_from_socket	common_utils.cpp	/^int cu_read_int_from_socket(int client_socket, int* result)$/;"	f
+cu_read_string_from_socket	common_utils.cpp	/^int cu_read_string_from_socket(int socket_id, char* buf, int buf_len)$/;"	f
+cu_read_uint32_from_socket	common_utils.cpp	/^int cu_read_uint32_from_socket(int client_socket, uint32_t* result)$/;"	f
+cu_recv	common_utils.cpp	/^int cu_recv(int socket_id, char* buffer, int buffer_length)$/;"	f
+cu_reseed_random_number_generator	common_utils.cpp	/^void cu_reseed_random_number_generator()$/;"	f
+cu_resolve_hostname_to_ip_address	common_utils.cpp	/^int cu_resolve_hostname_to_ip_address(const char* hostname, char* ip_addr_buf)$/;"	f
+cu_send	common_utils.cpp	/^int cu_send(int socket_id, const char* buf, int buf_len)$/;"	f
+cu_timed_connect	common_utils.cpp	/^int cu_timed_connect(int* socket_id, const char* address, uint16_t port, double* timeout_interval)$/;"	f
+cu_validate_ip_address	common_utils.cpp	/^int cu_validate_ip_address(const char* ip_addr)$/;"	f
+cu_write_bool_to_socket	common_utils.cpp	/^int cu_write_bool_to_socket(int client_socket, bool value)$/;"	f
+cu_write_data_item	common_utils.cpp	/^int cu_write_data_item(int socket_id, const void* buf, int buf_len)$/;"	f
+cu_write_double_to_socket	common_utils.cpp	/^int cu_write_double_to_socket(int socket_id, double value)$/;"	f
+cu_write_float_to_socket	common_utils.cpp	/^int cu_write_float_to_socket(int socket_id, float value)$/;"	f
+cu_write_int_to_socket	common_utils.cpp	/^int cu_write_int_to_socket(int client_socket, int value)$/;"	f
+cu_write_string_to_socket	common_utils.cpp	/^int cu_write_string_to_socket(int socket_id, const char* buf)$/;"	f
+cu_write_uint32_to_socket	common_utils.cpp	/^int cu_write_uint32_to_socket(int client_socket, uint32_t value)$/;"	f
+dest_ip	gateway_commands.h	/^	char dest_ip[16];$/;"	m	struct:__anon1
+dest_port	gateway_commands.h	/^	char dest_port[2];$/;"	m	struct:__anon1
+gateway_control_thread	gateway_controller.cpp	/^void* gateway_control_thread(void* args)$/;"	f
+get_connection_stat	common_utils.cpp	/^static int get_connection_stat(int socket_id, int operation)$/;"	f	file:
+get_console_dimensions	common_utils.cpp	/^void get_console_dimensions(uint32_t* width, uint32_t* height)$/;"	f
+gettimeofday	common_utils.cpp	/^int gettimeofday(struct timeval *tv, struct timezone *tz)$/;"	f
+host_lookup_lock	common_utils.cpp	/^pthread_mutex_t host_lookup_lock = PTHREAD_MUTEX_INITIALIZER;$/;"	v
+inet_ntop	common_utils.cpp	/^const char *inet_ntop(int af, const void *src, char *dst, uint32_t cnt)$/;"	f
+main	gateway_controller.cpp	/^int main(int argc, char** argv)$/;"	f
+next	common_utils.h	/^	struct _cu_sock_info* next;$/;"	m	struct:_cu_sock_info	typeref:struct:_cu_sock_info::_cu_sock_info
+process_client_messages	gateway_controller.cpp	/^void process_client_messages(int client_socket)$/;"	f
+remove_connection	common_utils.cpp	/^static void remove_connection(int socket_id)$/;"	f	file:
+set_primary_server	gateway_controller.cpp	/^void set_primary_server(const char* primary_server_ip)$/;"	f
+socket_id	common_utils.h	/^	int socket_id;$/;"	m	struct:_cu_sock_info
+src_ip	gateway_commands.h	/^	char src_ip[16];$/;"	m	struct:__anon1
+src_port	gateway_commands.h	/^	char src_port[2];$/;"	m	struct:__anon1
+startup_gateway_control	gateway_controller.cpp	/^void startup_gateway_control()$/;"	f
+timezone	common_utils.h	/^struct timezone$/;"	s
+transfer_connection	gateway_controller.cpp	/^void transfer_connection(const char* src_ip, unsigned short src_port, const char* dest_ip, unsigned short dest_port)$/;"	f
+tz_dsttime	common_utils.h	/^	int tz_dsttime;$/;"	m	struct:timezone
+tz_minuteswest	common_utils.h	/^	int tz_minuteswest;$/;"	m	struct:timezone
+update_connection_stat	common_utils.cpp	/^static void update_connection_stat(int socket_id, int bytes_to_adjust, int operation)$/;"	f	file:
+uptime	common_utils.h	/^	struct timeval uptime;$/;"	m	struct:_cu_sock_info	typeref:struct:_cu_sock_info::timeval
