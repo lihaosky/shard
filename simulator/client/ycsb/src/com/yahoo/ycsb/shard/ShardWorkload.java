@@ -243,6 +243,10 @@ public class ShardWorkload
 		return true;
 	}
 
+	/**
+	 * Read
+	 * @param db Database
+	 */
 	public void doTransactionRead(ShardDB db)
 	{
 		//choose a random key
@@ -258,13 +262,19 @@ public class ShardWorkload
 			keynum=Utils.hash(keynum);
 		}
 		
-		byte[] key = IntKeyMap.get(keynum);
+		byte[] key = null;
+		synchronized (this) {
+			key = IntKeyMap.get(keynum);
+		}
 		byte[] result = null;
 
 		db.read(key, result);
 	}
 	
-
+	/**
+	 * Update
+	 * @param db Database
+	 */
 	public void doTransactionUpdate(ShardDB db)
 	{
 		//choose a random key
@@ -279,13 +289,22 @@ public class ShardWorkload
 		{
 			keynum=Utils.hash(keynum);
 		}
-		byte[] key = IntKeyMap.get(keynum);
+		
+		byte[] key = null;
+		
+		synchronized (this) {
+			key = IntKeyMap.get(keynum);
+		}
 		String stringValue = Utils.ASCIIString(fieldlength);
 		byte[] value = stringValue.getBytes();
 
 		db.update(key, value);
 	}
 
+	/**
+	 * Insert
+	 * @param db Database
+	 */
 	public void doTransactionInsert(ShardDB db)
 	{
 		//choose the next key
@@ -298,7 +317,9 @@ public class ShardWorkload
 		byte[] key = stringKey.getBytes();
 		String stringValue = Utils.ASCIIString(fieldlength);
 		byte[] value = stringValue.getBytes();
-		IntKeyMap.put(keynum, value);
+		synchronized (this) {
+			IntKeyMap.put(keynum, value);
+		}
 		db.insert(key, value);
 	}
 }
