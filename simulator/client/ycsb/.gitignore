@@ -1,6 +1,0 @@
-build
-.classpath
-.project
-.settings
-db/*/lib/*
-
