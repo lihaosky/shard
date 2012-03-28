@@ -769,7 +769,7 @@ fail:
 }
 
 
-int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_time, int* command_type) {
+int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_time, int* command_type, char* key) {
 
 	int read_status = 0;
 	int offset = 0;
@@ -862,6 +862,29 @@ int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_t
     }
 
     *command_type = ntohl(*command_type);
+
+    read_status = 0;
+    offset = 0;
+    //Read the key client want to get
+    //128 bytes...
+   while (1) {
+       read_status = recv(socket_id, key + offset, 128 - offset, 0);
+       if (read_status == -1) {
+           if (errno == EINTR) {
+               continue;
+           } else {
+               return -1;
+           }
+       } else if (read_status == 0) {
+           return -1;
+       } else {
+           offset += read_status;
+       }
+
+       if (offset == 128) {
+           break;
+       }
+   }
 
     return 0;
 

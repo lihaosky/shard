@@ -1,22 +1,12 @@
 package com.yahoo.ycsb.shard;
-import java.io.DataOutputStream;
 import java.io.IOException;
-import java.net.*;
 
 /**
  * Handle operation to remote db using socket
  * @author lihao
  *
  */
-public class ShardServerConnection {
-	/**
-	 * Socket to server
-	 */
-	private Socket s;
-	/**
-	 * Data output stream for the socket 
-	 */
-	private DataOutputStream dos;
+public class ShardServerConnection extends Connection{
 	/**
 	 * Total packet length:      4 bytes int
 	 * Time to arrive at server: 8 bytes long
@@ -27,16 +17,7 @@ public class ShardServerConnection {
 	private int headerLength = 4 + 8 + 4 + 4 + 4;
 	
 	public ShardServerConnection(String hostname, int port) {
-		try {
-			s = new Socket(hostname, port);
-			dos = new DataOutputStream(s.getOutputStream());
-		} catch (UnknownHostException e) {
-			System.err.println("Unknownhost Exception!");
-			e.printStackTrace();
-		} catch (IOException e) {
-			System.err.println("IO Exception in connecting to server!");
-			e.printStackTrace();
-		}
+		super(hostname, port);
 	}
 	
 	/**
@@ -130,16 +111,6 @@ public class ShardServerConnection {
 			dos.writeInt(serverID);
 		} catch (IOException e) {
 			System.err.println("IO Exception in writing header!");
-			e.printStackTrace();
-		}
-	}
-	
-	public void close() {
-		try {
-			dos.close();
-			s.close();
-		} catch (IOException e) {
-			System.err.println("IO Exception in closing socket!");
 			e.printStackTrace();
 		}
 	}

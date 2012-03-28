@@ -103,7 +103,7 @@ int cu_recv(int socket_id, char* buf, int buf_len);
 
 int cu_read_crlfcrlf_terminated_block_from_socket(int client_socket, char* buffer, int buffer_size);
 
-int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_time, int* command_type);
+int cu_read_command_from_socket(int socket_id, int* data_length, long* arrival_time, int* command_type, char* key);
 
 // timer related
 void cu_improved_sleep(double interval);

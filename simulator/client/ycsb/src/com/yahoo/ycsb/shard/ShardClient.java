@@ -320,6 +320,10 @@ public class ShardClient
 
 	public static final String WORKLOAD_PROPERTY="workload";
 	
+	public static final String SERVER_LATENCY_PROPERTY = "serverlatency";
+	
+	public static final String CONTROLLER_LATENCY_PROPERTY = "controllerlatency";
+	
 	/**
 	 * Indicates how many inserts to do, if less than recordcount. Useful for partitioning
 	 * the load among multiple servers, if the client is the bottleneck. Additionally, workloads
@@ -329,7 +333,7 @@ public class ShardClient
 
 	public static void usageMessage()
 	{
-		System.out.println("Usage: java com.yahoo.ycsb.Client [options]");
+		System.out.println("Usage: java com.yahoo.ycsb.ShardClient [options]");
 		System.out.println("Options:");
 		System.out.println("  -threads n: execute using n threads (default: 1) - can also be specified as the \n" +
 				"              \"threadcount\" property using -p");
@@ -680,11 +684,15 @@ public class ShardClient
 			}
 		}
 
+		
+		long serverLatency = Integer.parseInt(props.getProperty(SERVER_LATENCY_PROPERTY, "0"));
+		long controllerLatency = Integer.parseInt(props.getProperty(CONTROLLER_LATENCY_PROPERTY, "0"));
+		
 		Vector<Thread> threads=new Vector<Thread>();
 
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
-			ShardDB db = new ShardDBClient(0);   //Need to set the latency for db...
+			ShardDB db = new ShardDBClient(serverLatency, controllerLatency);   //Need to set the latency for db...
 			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);

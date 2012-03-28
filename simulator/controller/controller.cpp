@@ -27,15 +27,17 @@ int main(int argc, char** argv)
 
         int data_length, command_type;
         long arrival_time;
+        char key[128];
 
-        if (cu_read_command_from_socket(client_socket, &data_length, &arrival_time, &command_type) != 0) {
+        if (cu_read_command_from_socket(client_socket, &data_length, &arrival_time, &command_type, key) != 0) {
             cout << "Something wrong!" << endl;
         }
 
         cout << "Data length is " << data_length << endl;
         cout << "Arrival_time is " << arrival_time << endl;
         cout << "Command type is " << command_type << endl;
-        
+        cout << "Key is " << key << endl;
+
         close(client_socket);
     }
 
