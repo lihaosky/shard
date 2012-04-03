@@ -33,14 +33,27 @@ public class ShardControllerConnection extends Connection{
 	 * @return Map from key to serverID
 	 */
 	public HashMap<byte[], Integer> fetchMap(byte[] key, long reachTime) {
+		HashMap<byte[], Integer> map = new HashMap<byte[], Integer>();
+		
 		try {
 			dos.writeInt(headerLength);
 			dos.writeLong(reachTime);
 			dos.writeInt(CommandType.REQUESTMAP);
 			dos.write(key);
+			
+			/**
+			 * First read total key number and then read each key and corresponding server number
+			 */
+			int totalKeyNumber = dis.readInt();
+			for (int i = 0; i < totalKeyNumber; i++) {
+				byte[] b = new byte[ShardWorkload.fieldlength];
+				dis.read(b, 0, ShardWorkload.fieldlength);
+				int serverNumber = dis.readInt();
+				map.put(b, serverNumber);
+			}
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
-		return new HashMap<byte[], Integer>();
+		return map;
 	}
 }

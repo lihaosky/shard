@@ -45,7 +45,7 @@ public class ShardWorkload
 	 */
 	public static final String FIELD_LENGTH_PROPERTY_DEFAULT="100";
 
-	int fieldlength;
+	public static int fieldlength;
 	
 	/**
 	 * The name of the property for the length of a key in bytes
