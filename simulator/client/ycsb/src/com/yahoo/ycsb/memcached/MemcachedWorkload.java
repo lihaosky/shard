@@ -1,4 +1,4 @@
-package com.yahoo.ycsb.shard;
+package com.yahoo.ycsb.memcached;
 
 import java.util.Properties;
 import com.yahoo.ycsb.*;
@@ -27,13 +27,15 @@ import java.util.HashMap;
  * <LI><b>insertorder</b>: should records be inserted in order by key ("ordered"), or in hashed order ("hashed") (default: hashed)
  * </ul> 
  */
-public class ShardWorkload
+public class MemcachedWorkload
 {
 
+	private boolean isFirst = true;
+	
 	/**
 	 * Store int to byte key mapping. For reuse bytes.
 	 */
-	private HashMap<Integer, byte[]> IntKeyMap;
+	private HashMap<Integer, String> IntKeyMap;
 
 	/**
 	 * The name of the property for the length of a field in bytes.
@@ -71,7 +73,7 @@ public class ShardWorkload
 	/**
 	 * The default proportion of transactions that are reads.	
 	 */
-	public static final String READ_PROPORTION_PROPERTY_DEFAULT="0.95";
+	public static final String READ_PROPORTION_PROPERTY_DEFAULT="0.80";
 
 	/**
 	 * The name of the property for the proportion of transactions that are updates.
@@ -81,7 +83,7 @@ public class ShardWorkload
 	/**
 	 * The default proportion of transactions that are updates.
 	 */
-	public static final String UPDATE_PROPORTION_PROPERTY_DEFAULT="0.05";
+	public static final String UPDATE_PROPORTION_PROPERTY_DEFAULT="0.00";
 
 	/**
 	 * The name of the property for the proportion of transactions that are inserts.
@@ -91,7 +93,7 @@ public class ShardWorkload
 	/**
 	 * The default proportion of transactions that are inserts.
 	 */
-	public static final String INSERT_PROPORTION_PROPERTY_DEFAULT="0.0";
+	public static final String INSERT_PROPORTION_PROPERTY_DEFAULT="0.20";
 	
 	
 	/***************************************************/
@@ -108,7 +110,7 @@ public class ShardWorkload
 	/**
 	 * The default distribution of requests across the keyspace
 	 */
-	public static final String REQUEST_DISTRIBUTION_PROPERTY_DEFAULT="uniform";
+	public static final String REQUEST_DISTRIBUTION_PROPERTY_DEFAULT="zipfian";
 	/********************************************************/
 	
 	
@@ -150,7 +152,7 @@ public class ShardWorkload
 		double readproportion=Double.parseDouble(p.getProperty(READ_PROPORTION_PROPERTY,READ_PROPORTION_PROPERTY_DEFAULT));
 		double updateproportion=Double.parseDouble(p.getProperty(UPDATE_PROPORTION_PROPERTY,UPDATE_PROPORTION_PROPERTY_DEFAULT));
 		double insertproportion=Double.parseDouble(p.getProperty(INSERT_PROPORTION_PROPERTY,INSERT_PROPORTION_PROPERTY_DEFAULT));
-		recordcount=Integer.parseInt(p.getProperty(Client.RECORD_COUNT_PROPERTY));
+		recordcount=Integer.parseInt(p.getProperty(MemcachedClient.RECORD_COUNT_PROPERTY));
 		String requestdistrib=p.getProperty(REQUEST_DISTRIBUTION_PROPERTY,REQUEST_DISTRIBUTION_PROPERTY_DEFAULT);
 		int insertstart=Integer.parseInt(p.getProperty(Workload.INSERT_START_PROPERTY,Workload.INSERT_START_PROPERTY_DEFAULT));
 		
@@ -199,7 +201,7 @@ public class ShardWorkload
 			//plus the number of predicted keys as the total keyspace. then, if the generator picks a key that hasn't been inserted yet, will
 			//just ignore it and pick another key. this way, the size of the keyspace doesn't change from the perspective of the scrambled zipfian generator
 			
-			int opcount=Integer.parseInt(p.getProperty(Client.OPERATION_COUNT_PROPERTY));
+			int opcount=Integer.parseInt(p.getProperty(MemcachedClient.OPERATION_COUNT_PROPERTY));
 			int expectednewkeys=(int)(((double)opcount)*insertproportion*2.0); //2 is fudge factor
 			
 			keychooser=new ScrambledZipfianGenerator(recordcount+expectednewkeys);
@@ -213,7 +215,7 @@ public class ShardWorkload
 			throw new WorkloadException("Unknown distribution \""+requestdistrib+"\"");
 		}
 		
-		IntKeyMap = new HashMap<Integer, byte[]>();
+		IntKeyMap = new HashMap<Integer, String>();
 	}
 
 
@@ -223,10 +225,15 @@ public class ShardWorkload
 	 * other, and it will be difficult to reach the target throughput. Ideally, this function would have no side
 	 * effects other than DB operations.
 	 */
-	public boolean doTransaction(ShardDB db, Object threadstate)
+	public boolean doTransaction(MemcachedDB db, Object threadstate)
 	{
 		String op=operationchooser.nextString();
-
+		
+		if (isFirst) {
+			op = "INSERT";
+			isFirst = false;
+		}
+		
 		if (op.compareTo("READ")==0)
 		{
 			doTransactionRead(db);
@@ -247,13 +254,17 @@ public class ShardWorkload
 	 * Read
 	 * @param db Database
 	 */
-	public void doTransactionRead(ShardDB db)
+	public void doTransactionRead(MemcachedDB db)
 	{
 		//choose a random key
+		System.out.println(transactioninsertkeysequence.lastInt());
+		
 		int keynum;
 		do
 		{
 			keynum=keychooser.nextInt();
+			System.out.println(keynum);
+			
 		}
 		while (keynum>transactioninsertkeysequence.lastInt());
 		
@@ -262,22 +273,21 @@ public class ShardWorkload
 			keynum=Utils.hash(keynum);
 		}
 		
-		byte[] key = null;
-		while (key == null) {
-			synchronized (this) {
-				key = IntKeyMap.get(keynum);
-			}
+		String key = null;
+		
+		synchronized (this) {
+			key = IntKeyMap.get(keynum);
 		}
-		byte[] result = null;
-
-		db.read(key, result);
+		
+		String result = db.read(key);
+		System.out.println("Read key " + key + " value " + result);
 	}
 	
 	/**
 	 * Update
 	 * @param db Database
 	 */
-	public void doTransactionUpdate(ShardDB db)
+	public void doTransactionUpdate(MemcachedDB db)
 	{
 		//choose a random key
 		int keynum;
@@ -292,24 +302,22 @@ public class ShardWorkload
 			keynum=Utils.hash(keynum);
 		}
 		
-		byte[] key = null;
+		String key = null;
 		
-		while (key == null) {
-			synchronized (this) {
-				key = IntKeyMap.get(keynum);
-			}
+		synchronized (this) {
+			key = IntKeyMap.get(keynum);
 		}
-		String stringValue = Utils.ASCIIString(fieldlength);
-		byte[] value = stringValue.getBytes();
 
-		db.update(key, value);
+		String stringValue = Utils.ASCIIString(fieldlength);
+
+		db.update(key, stringValue);
 	}
 
 	/**
 	 * Insert
 	 * @param db Database
 	 */
-	public void doTransactionInsert(ShardDB db)
+	public void doTransactionInsert(MemcachedDB db)
 	{
 		//choose the next key
 		int keynum=transactioninsertkeysequence.nextInt();
@@ -318,12 +326,12 @@ public class ShardWorkload
 			keynum=Utils.hash(keynum);
 		}
 		String stringKey = Utils.ASCIIString(keylength);
-		byte[] key = stringKey.getBytes();
 		String stringValue = Utils.ASCIIString(fieldlength);
-		byte[] value = stringValue.getBytes();
 		synchronized (this) {
-			IntKeyMap.put(keynum, key);
+			IntKeyMap.put(keynum, stringKey);
 		}
-		db.insert(key, value);
+		db.insert(stringKey, stringValue);
+		System.out.println("Insert key " + stringKey + ", value " + stringValue);
 	}
 }
+

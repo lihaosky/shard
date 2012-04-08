@@ -4,7 +4,9 @@
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.6"/>
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/jackson-core-asl-1.5.2.jar"/>
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/jackson-mapper-asl-1.5.2.jar"/>
-	<classpathentry kind="lib" path="C:/Users/lihao/Desktop/shard/simulator/client/ycsb/lib/jackson-core-asl-1.5.2.jar"/>
-	<classpathentry kind="lib" path="C:/Users/lihao/Desktop/shard/simulator/client/ycsb/lib/jackson-mapper-asl-1.5.2.jar"/>
+	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/slf4j-api-1.6.4.jar"/>
+	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/org.springframework.beans-3.1.1.RELEASE.jar"/>
+	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/xmemcached.jar"/>
+	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/slf4j-simple-1.6.4.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

@@ -133,6 +133,13 @@ public class ShardDBClient extends ShardDB {
 			return (Integer)serverID;
 		}
 	}
+	
+	/**
+	 * close connections...
+	 */
+	public void cleanup() {
+		
+	}
 }
 
 
