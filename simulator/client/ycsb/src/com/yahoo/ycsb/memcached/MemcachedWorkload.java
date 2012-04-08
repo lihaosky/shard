@@ -263,7 +263,6 @@ public class MemcachedWorkload
 		do
 		{
 			keynum=keychooser.nextInt();
-			System.out.println(keynum);
 			
 		}
 		while (keynum>transactioninsertkeysequence.lastInt());
@@ -275,10 +274,11 @@ public class MemcachedWorkload
 		
 		String key = null;
 		
-		synchronized (this) {
-			key = IntKeyMap.get(keynum);
+		while (key == null) {
+			synchronized (this) {
+				key = IntKeyMap.get(keynum);
+			}
 		}
-		
 		String result = db.read(key);
 		System.out.println("Read key " + key + " value " + result);
 	}
@@ -304,10 +304,11 @@ public class MemcachedWorkload
 		
 		String key = null;
 		
-		synchronized (this) {
-			key = IntKeyMap.get(keynum);
+		while (key == null) {
+			synchronized (this) {
+				key = IntKeyMap.get(keynum);
+			}
 		}
-
 		String stringValue = Utils.ASCIIString(fieldlength);
 
 		db.update(key, stringValue);
