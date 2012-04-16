@@ -85,5 +85,7 @@ public abstract class MemcachedDB
 	 * @return Zero on success, a non-zero error code on error.  See this class's description for a discussion of error codes.
 	 */
 	public abstract boolean delete(String key);
+	
+	public abstract net.rubyeye.xmemcached.MemcachedClient getClient();
 }
 

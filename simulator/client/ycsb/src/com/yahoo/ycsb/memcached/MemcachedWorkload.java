@@ -45,7 +45,7 @@ public class MemcachedWorkload
 	/**
 	 * The default length of a field in bytes.
 	 */
-	public static final String FIELD_LENGTH_PROPERTY_DEFAULT="100";
+	public static final String FIELD_LENGTH_PROPERTY_DEFAULT="1048576";
 
 	public static int fieldlength;
 	
@@ -75,21 +75,24 @@ public class MemcachedWorkload
 	 */
 	public static final String READ_PROPORTION_PROPERTY_DEFAULT="0.80";
 
+	double readProportion;
 	/**
 	 * The name of the property for the proportion of transactions that are updates.
 	 */
 	public static final String UPDATE_PROPORTION_PROPERTY="updateproportion";
 	
+	double updateProportion;
+	
 	/**
 	 * The default proportion of transactions that are updates.
 	 */
 	public static final String UPDATE_PROPORTION_PROPERTY_DEFAULT="0.00";
-
 	/**
 	 * The name of the property for the proportion of transactions that are inserts.
 	 */
 	public static final String INSERT_PROPORTION_PROPERTY="insertproportion";
 	
+	double insertProportion;
 	/**
 	 * The default proportion of transactions that are inserts.
 	 */
@@ -149,9 +152,9 @@ public class MemcachedWorkload
 	{
 		fieldlength=Integer.parseInt(p.getProperty(FIELD_LENGTH_PROPERTY,FIELD_LENGTH_PROPERTY_DEFAULT));
 		keylength = Integer.parseInt(p.getProperty(KEY_LENGTH_RROPERTY, KEY_LENGTH_PROPERTY_DEFAULT));
-		double readproportion=Double.parseDouble(p.getProperty(READ_PROPORTION_PROPERTY,READ_PROPORTION_PROPERTY_DEFAULT));
-		double updateproportion=Double.parseDouble(p.getProperty(UPDATE_PROPORTION_PROPERTY,UPDATE_PROPORTION_PROPERTY_DEFAULT));
-		double insertproportion=Double.parseDouble(p.getProperty(INSERT_PROPORTION_PROPERTY,INSERT_PROPORTION_PROPERTY_DEFAULT));
+		readProportion=Double.parseDouble(p.getProperty(READ_PROPORTION_PROPERTY,READ_PROPORTION_PROPERTY_DEFAULT));
+		updateProportion=Double.parseDouble(p.getProperty(UPDATE_PROPORTION_PROPERTY,UPDATE_PROPORTION_PROPERTY_DEFAULT));
+		insertProportion=Double.parseDouble(p.getProperty(INSERT_PROPORTION_PROPERTY,INSERT_PROPORTION_PROPERTY_DEFAULT));
 		recordcount=Integer.parseInt(p.getProperty(MemcachedClient.RECORD_COUNT_PROPERTY));
 		String requestdistrib=p.getProperty(REQUEST_DISTRIBUTION_PROPERTY,REQUEST_DISTRIBUTION_PROPERTY_DEFAULT);
 		int insertstart=Integer.parseInt(p.getProperty(Workload.INSERT_START_PROPERTY,Workload.INSERT_START_PROPERTY_DEFAULT));
@@ -169,19 +172,19 @@ public class MemcachedWorkload
 		operationchooser=new DiscreteGenerator();
 		
 		//Operation proportion
-		if (readproportion>0)
+		if (readProportion>0)
 		{
-			operationchooser.addValue(readproportion,"READ");
+			operationchooser.addValue(readProportion,"READ");
 		}
 
-		if (updateproportion>0)
+		if (updateProportion>0)
 		{
-			operationchooser.addValue(updateproportion,"UPDATE");
+			operationchooser.addValue(updateProportion,"UPDATE");
 		}
 
-		if (insertproportion>0)
+		if (insertProportion>0)
 		{
-			operationchooser.addValue(insertproportion,"INSERT");
+			operationchooser.addValue(insertProportion,"INSERT");
 		}
 
 		transactioninsertkeysequence=new CounterGenerator(recordcount);
@@ -191,6 +194,7 @@ public class MemcachedWorkload
 		if (requestdistrib.compareTo("uniform")==0)
 		{
 			keychooser=new UniformIntegerGenerator(0,recordcount-1);
+			System.out.println("Distribution is uniform");
 		}
 		else if (requestdistrib.compareTo("zipfian")==0)
 		{
@@ -202,13 +206,15 @@ public class MemcachedWorkload
 			//just ignore it and pick another key. this way, the size of the keyspace doesn't change from the perspective of the scrambled zipfian generator
 			
 			int opcount=Integer.parseInt(p.getProperty(MemcachedClient.OPERATION_COUNT_PROPERTY));
-			int expectednewkeys=(int)(((double)opcount)*insertproportion*2.0); //2 is fudge factor
+			int expectednewkeys=(int)(((double)opcount)*insertProportion*2.0); //2 is fudge factor
 			
 			keychooser=new ScrambledZipfianGenerator(recordcount+expectednewkeys);
+			System.out.println("Distribution is zipfian");
 		}
 		else if (requestdistrib.compareTo("latest")==0)
 		{
 			keychooser=new SkewedLatestGenerator(transactioninsertkeysequence);
+			System.out.println("Distribution is latest");
 		}
 		else
 		{
@@ -216,8 +222,18 @@ public class MemcachedWorkload
 		}
 		
 		IntKeyMap = new HashMap<Integer, String>();
+		
+		printConfig();
 	}
 
+	
+	private void printConfig() {
+		System.out.println("Key length is " + this.keylength);
+		System.out.println("Value length is " + this.fieldlength);
+		System.out.println("Read proportion is " + this.readProportion);
+		System.out.println("Update proportion is " + this.updateProportion);
+		System.out.println("Insert proportion is " + this.insertProportion);
+	}
 
 	/**
 	 * Do one transaction operation. Because it will be called concurrently from multiple client threads, this 
@@ -256,9 +272,6 @@ public class MemcachedWorkload
 	 */
 	public void doTransactionRead(MemcachedDB db)
 	{
-		//choose a random key
-		System.out.println(transactioninsertkeysequence.lastInt());
-		
 		int keynum;
 		do
 		{
@@ -279,8 +292,15 @@ public class MemcachedWorkload
 				key = IntKeyMap.get(keynum);
 			}
 		}
+		long t1 = System.currentTimeMillis();
 		String result = db.read(key);
-		System.out.println("Read key " + key + " value " + result);
+		long t2 = System.currentTimeMillis();
+		int time = (int)(t2 - t1);
+		
+		int serverNum = db.getClient().findServerNumByKey(key);
+		Measurement.incrementKeyReadNum(keynum);
+		Measurement.incrementServerReadNum(serverNum);
+		Measurement.incrementServerLatency(serverNum, time);
 	}
 	
 	/**
@@ -331,8 +351,17 @@ public class MemcachedWorkload
 		synchronized (this) {
 			IntKeyMap.put(keynum, stringKey);
 		}
+		
+		long t1 = System.currentTimeMillis();
 		db.insert(stringKey, stringValue);
-		System.out.println("Insert key " + stringKey + ", value " + stringValue);
+		long t2 = System.currentTimeMillis();
+		
+		int time = (int)(t2 - t1);
+		
+		int serverNum = db.getClient().findServerNumByKey(stringKey);
+		Measurement.incrementKeyReadNum(keynum);
+		Measurement.incrementServerReadNum(serverNum);
+		Measurement.incrementServerLatency(serverNum, time);
 	}
 }
 

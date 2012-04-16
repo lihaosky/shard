@@ -87,6 +87,10 @@ public class MemcachedDBClient extends MemcachedDB {
 			e.printStackTrace();
 		}
 	}
+	
+	public net.rubyeye.xmemcached.MemcachedClient getClient() {
+		return this.mclient;
+	}
 }
 
 

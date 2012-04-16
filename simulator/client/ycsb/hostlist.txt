@@ -1,2 +1,2 @@
-localhost:12345
-localhost:12344
+localhost:1234
+localhost:4321

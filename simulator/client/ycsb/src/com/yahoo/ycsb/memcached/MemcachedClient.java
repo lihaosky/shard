@@ -192,7 +192,6 @@ class ClientThread extends Thread
 		try
 		{
 			_db.init();
-			System.out.println("here");
 		}
 		catch (DBException e)
 		{
@@ -222,7 +221,6 @@ class ClientThread extends Thread
 			{
 				long st=System.currentTimeMillis();
 
-				System.out.println(_opcount);
 				
 				while ( (_opcount==0) || (_opsdone<_opcount) )
 				{
@@ -784,6 +782,8 @@ public class MemcachedClient
 			}
 		}
 
+		Measurement.report();
+		
 		long en=System.currentTimeMillis();
 
 		if (status)

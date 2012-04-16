@@ -6,7 +6,7 @@
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/jackson-mapper-asl-1.5.2.jar"/>
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/slf4j-api-1.6.4.jar"/>
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/org.springframework.beans-3.1.1.RELEASE.jar"/>
-	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/xmemcached.jar"/>
 	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/slf4j-simple-1.6.4.jar"/>
+	<classpathentry kind="lib" path="/home/lihao/Desktop/shard/simulator/client/ycsb/lib/xmemcached.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
