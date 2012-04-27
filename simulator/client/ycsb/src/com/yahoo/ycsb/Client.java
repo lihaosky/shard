@@ -698,7 +698,7 @@ public class Client
 		}
 
 		Vector<Thread> threads=new Vector<Thread>();
-
+		
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
 			DB db=null;
@@ -715,7 +715,6 @@ public class Client
 			Thread t=new ClientThread1(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
 
 			threads.add(t);
-			//t.start();
 		}
 
 		StatusThread1 statusthread=null;

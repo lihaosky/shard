@@ -18,16 +18,25 @@
 package com.yahoo.ycsb.memcached;
 
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.FileReader;
+import java.io.IOException;
+import java.io.OutputStream;
 import java.text.DecimalFormat;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Enumeration;
+import java.util.Properties;
+import java.util.Random;
+import java.util.Vector;
 
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
 import com.yahoo.ycsb.measurements.exporter.MeasurementsExporter;
 import com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter;
-import net.rubyeye.xmemcached.*;
 
 //import org.apache.log4j.BasicConfigurator;
 
@@ -725,7 +734,8 @@ public class MemcachedClient
 		ArrayList<HostPort> hostPortList = MemcachedClient.getHostPortMap();
 		
 		Vector<Thread> threads=new Vector<Thread>();
-
+		Vector<MemcachedDB> dbs = new Vector<MemcachedDB>();
+		
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
@@ -749,6 +759,7 @@ public class MemcachedClient
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
 
 			threads.add(t);
+			dbs.add(db);
 		}
 
 		StatusThread statusthread=null;
@@ -776,13 +787,14 @@ public class MemcachedClient
 			try
 			{
 				t.join();
+				
 			}
 			catch (InterruptedException e)
 			{
 			}
 		}
 
-		Measurement.report();
+		Measurement.report(dbs);
 		
 		long en=System.currentTimeMillis();
 
