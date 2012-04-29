@@ -33,6 +33,8 @@ enum head
 };
 
 #define STAT_KEY_LEN 128
+#define SERV_ID_LEN 24
+
 /* Managing replica status of each object */
 typedef struct replica_stat
 {
@@ -57,11 +59,11 @@ typedef struct server
 {
     struct bufferevent *bev;
     KV_REPORT *reports;         /* hashtable for key report */
-    int hit;    
+    int hit;
 } SERVER;
 typedef struct server_item 
 {
-    char name[24];              /* ip:port makes the key */
+    char name[SERV_ID_LEN];     /* ip:port makes the key */
     SERVER *serv;
     UT_hash_handle hh;          /* makes this structure hashable */
 } SERV_IT;
@@ -83,7 +85,7 @@ addserv(struct bufferevent *bev, char *ip_port)
     mem_serv->reports = NULL;
     SERV_IT *mem_serv_it = malloc(sizeof(SERV_IT));
     mem_serv_it->serv = mem_serv;
-    memcpy(mem_serv_it->name, ip_port, 24);
+    memcpy(mem_serv_it->name, ip_port, SERV_ID_LEN);
     HASH_ADD_STR(servers, name, mem_serv_it);
     return mem_serv_it;
 }
@@ -137,7 +139,6 @@ readcb(struct bufferevent *bev, void *ctx)
 
     ip_port = (char *)ctx;
     while ((line = evbuffer_readln(input, &n, EVBUFFER_EOL_CRLF))) {
-        // TODO: identify command        
         char *tokens = strtok(line, ":");
         switch (atoi(tokens)) {
             case REPORT:
@@ -168,7 +169,7 @@ errorcb(struct bufferevent *bev, short error, void *ctx)
         /* connection has been closed, do any clean up here */
         /* ... */        
         char *ip_port = (char *)ctx;
-        
+
         /* remove server from hashmap */
         SERV_IT *serv_item;
         HASH_FIND_STR(servers, ip_port, serv_item);
@@ -177,9 +178,9 @@ errorcb(struct bufferevent *bev, short error, void *ctx)
             //free(serv_item->serv);
             //free(serv_item->name);
             free(serv_item);
-        }        
+        }
         free(ip_port);
-        
+
     } else if (error & BEV_EVENT_ERROR) {
         /* check errno to see what error occurred */
         /* ... */
@@ -203,7 +204,7 @@ do_accept(evutil_socket_t listener, short event, void *arg)
         close(fd);
     } else {
         /* get address formed in ip:port */
-        char *ip_port = malloc(24 * sizeof(char));        
+        char *ip_port = malloc(SERV_ID_LEN * sizeof(char));        
         if (sa_in.sin_family == AF_INET) {
             sprintf(ip_port, "%s:%d", inet_ntoa(sa_in.sin_addr), 
                 ntohs(sa_in.sin_port));
@@ -214,11 +215,11 @@ do_accept(evutil_socket_t listener, short event, void *arg)
             close(fd);
             return;
         }
-        
+
         struct bufferevent *bev;
         evutil_make_socket_nonblocking(fd);
         bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
-        
+
         /* setup event callback for the new connection */
         bufferevent_setcb(bev, readcb, NULL, errorcb, ip_port);
         bufferevent_setwatermark(bev, EV_READ, 0, MAX_LINE);
@@ -238,7 +239,7 @@ int key_hit_sort(KV_REPORT *a, KV_REPORT *b)
 }
 
 int
-Replicate()
+replicate()
 {
     return 1;
 }
@@ -267,7 +268,28 @@ rep_adjust(int fd, short event, void *arg)
             //potentially very inefficient for now
             //TODO: optimize it later for performance
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
-            
+            KV_REPORT * pop_obj;
+            for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
+                pop_obj=pop_obj->hh.next) {
+                if (pop_obj->hit <= 2 * average_hit) {
+                    break;
+                }
+                int need_replica = pop_obj->hit/average_hit - 1;
+                REPLICA_STATUS *pop_status;
+                HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
+                if (!pop_status) {
+                    pop_status = malloc(sizeof(REPLICA_STATUS));
+                    memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
+                    pop_status->old_index = 0;
+                    pop_status->replica_cnt = 1;
+                    utarray_new(pop_status->replicas,&ut_str_icd);
+                    char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
+                    memcpy(rep_name, busy_item->name, SERV_ID_LEN);
+                    utarray_push_back(pop_status->replicas, rep_name);
+                    HASH_ADD_STR(replica_stats, kname, pop_status);
+                }
+                pop_status->replica_cnt += need_replica;
+            }
         }
         casual_item = busy_item;
     }
