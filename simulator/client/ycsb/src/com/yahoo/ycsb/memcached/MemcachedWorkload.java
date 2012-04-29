@@ -29,7 +29,8 @@ import java.util.HashMap;
  */
 public class MemcachedWorkload
 {
-
+	private Object writeLock = new Object();
+	
 	private boolean isFirst = true;
 	
 	/**
@@ -47,7 +48,7 @@ public class MemcachedWorkload
 	 */
 	public static final String FIELD_LENGTH_PROPERTY_DEFAULT="1048576";
 
-	public static int fieldlength;
+    int fieldlength;
 	
 	/**
 	 * The name of the property for the length of a key in bytes
@@ -273,12 +274,10 @@ public class MemcachedWorkload
 	public void doTransactionRead(MemcachedDB db)
 	{
 		int keynum;
-		do
-		{
+		do {
 			keynum=keychooser.nextInt();
 			
-		}
-		while (keynum>transactioninsertkeysequence.lastInt());
+		} while (keynum>transactioninsertkeysequence.lastInt());
 		
 		if (!orderedinserts)
 		{
@@ -286,21 +285,26 @@ public class MemcachedWorkload
 		}
 		
 		String key = null;
-		
 		while (key == null) {
-			synchronized (this) {
-				key = IntKeyMap.get(keynum);
+			key = IntKeyMap.get(keynum);
+			if (key == null) {
+				try {
+					Thread.sleep(10);
+				} catch (InterruptedException e) {
+					e.printStackTrace();
+				}
 			}
 		}
+		
 		long t1 = System.currentTimeMillis();
-		String result = db.read(key);
+		db.read(key);
 		long t2 = System.currentTimeMillis();
 		int time = (int)(t2 - t1);
 		
 		int serverNum = db.getClient().findServerNumByKey(key);
-		Measurement.incrementKeyReadNum(keynum);
-		Measurement.incrementServerReadNum(serverNum);
-		Measurement.incrementServerLatency(serverNum, time);
+		db.incrementKeyReadNum(keynum);
+		db.incrementServerReadNum(serverNum);
+		db.incrementServerLatency(serverNum, time);
 	}
 	
 	/**
@@ -311,23 +315,17 @@ public class MemcachedWorkload
 	{
 		//choose a random key
 		int keynum;
-		do
-		{
+		do {
 			keynum=keychooser.nextInt();
-		}
-		while (keynum>transactioninsertkeysequence.lastInt());
+		} while (keynum>transactioninsertkeysequence.lastInt());
 
-		if (!orderedinserts)
-		{
+		if (!orderedinserts) {
 			keynum=Utils.hash(keynum);
 		}
 		
 		String key = null;
-		
 		while (key == null) {
-			synchronized (this) {
-				key = IntKeyMap.get(keynum);
-			}
+			key = IntKeyMap.get(keynum);
 		}
 		String stringValue = Utils.ASCIIString(fieldlength);
 
@@ -342,13 +340,13 @@ public class MemcachedWorkload
 	{
 		//choose the next key
 		int keynum=transactioninsertkeysequence.nextInt();
-		if (!orderedinserts)
-		{
+		if (!orderedinserts) {
 			keynum=Utils.hash(keynum);
 		}
 		String stringKey = Utils.ASCIIString(keylength);
 		String stringValue = Utils.ASCIIString(fieldlength);
-		synchronized (this) {
+		
+		synchronized (writeLock) {
 			IntKeyMap.put(keynum, stringKey);
 		}
 		
@@ -359,9 +357,9 @@ public class MemcachedWorkload
 		int time = (int)(t2 - t1);
 		
 		int serverNum = db.getClient().findServerNumByKey(stringKey);
-		Measurement.incrementKeyReadNum(keynum);
-		Measurement.incrementServerReadNum(serverNum);
-		Measurement.incrementServerLatency(serverNum, time);
+		db.incrementKeyReadNum(keynum);
+		db.incrementServerReadNum(serverNum);
+		db.incrementServerLatency(serverNum, time);
 	}
 }
 

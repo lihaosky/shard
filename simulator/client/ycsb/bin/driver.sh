@@ -1,0 +1,1 @@
+java -cp /home/lihao/Desktop/shard/simulator/client/ycsb/lib/xmemcached.jar:/home/lihao/Desktop/shard/simulator/client/ycsb/lib/slf4j-api-1.6.4.jar:.  com.yahoo.ycsb.memcached.MemcachedClient -p recordcount=0 -p operationcount=$1 -threads $2 $3
