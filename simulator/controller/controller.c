@@ -312,10 +312,10 @@ rep_adjust(int fd, short event, void *arg)
                         memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
                         pop_status->old_index = 0;
                         pop_status->replica_cnt = 1;
-                        utarray_new(pop_status->replicas,&ut_str_icd);
+                        utarray_new(pop_status->replicas, &ut_str_icd);
                         char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
                         memcpy(rep_name, busy_item->name, SERV_ID_LEN);
-                        utarray_push_back(pop_status->replicas, rep_name);
+                        utarray_push_back(pop_status->replicas, &rep_name);
                         HASH_ADD_STR(replica_stats, kname, pop_status);
                     }
                     pop_status->replica_cnt += need_replica;
@@ -353,7 +353,7 @@ rep_adjust(int fd, short event, void *arg)
                 candidate_item->serv->hit += average_hit;
                 char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
                 memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
-                utarray_push_back(pop_status->replicas, rep_name);
+                utarray_push_back(pop_status->replicas, &rep_name);
                 need--;
             } else
             {
