@@ -75,11 +75,8 @@ typedef struct server_item
 
 pthread_rwlock_t lock;          /* read_write lock for server hashtable */
 SERV_IT *servers = NULL;        /* declared hashtable for all servers*/
-//KV_REPORT *objects = NULL;      /* decalred hashtable for all objects*/
 
 int total_hit = 0;              /* total hit of all servers */
-//int min_hit = 0;                /* hit of the least loaded server */
-//SERV_IT *min_serv_it = NULL;    /* the least loaded server item in hashtable */
 
 SERV_IT *
 addserv(struct bufferevent *bev, char *ip_port) 
@@ -118,10 +115,15 @@ void
 process_report(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
     SERV_IT *serv_item;
+    if (pthread_rwlock_wrlock(&lock) != 0) {
+        fprintf(stderr,"can't acquire write lock\n");
+        exit(-1);
+    }
     HASH_FIND_STR(servers, ip_port, serv_item);
     if (!serv_item) {
         serv_item = addserv(bev, ip_port);
     }
+    pthread_rwlock_unlock(&lock);
     char *key = strtok(NULL, ":");
     //TODO: multi key report case
     addreport(serv_item, key, 1);
@@ -261,10 +263,17 @@ rep_adjust(int fd, short event, void *arg)
     //from the most popular server to least popular server until no one is
     //10% higher than average
     //2. in every step calculation the number of replicas is doubled
+    
+    if (pthread_rwlock_wrlock(&lock) != 0) {
+        fprintf(stderr,"can't acquire write lock\n");
+        exit(-1);
+    }
+    
     int server_count = HASH_COUNT(servers);
     
     if (server_count == 0) {
         /* no server to maintain */
+        pthread_rwlock_unlock(&lock);
         return;
     }
     
@@ -320,7 +329,10 @@ rep_adjust(int fd, short event, void *arg)
     printf("Need to replicate %d popular objects!\n", pop_obj_cnt);
     
     /* exit if no need to do replication */
-    if (pop_obj_cnt == 0) return;
+    if (pop_obj_cnt == 0) {
+        pthread_rwlock_unlock(&lock);
+        return;
+    }
     
     /* now to find approriate casual servers to serve as replicas */
     REPLICA_STATUS *pop_status;
@@ -381,6 +393,8 @@ rep_adjust(int fd, short event, void *arg)
             pop_status->old_index = pop_status->replica_cnt - 1;
         }
     }
+    
+    pthread_rwlock_unlock(&lock);
 }
 
 /* Setup listener and timer */
