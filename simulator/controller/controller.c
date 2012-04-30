@@ -98,8 +98,8 @@ void
 addreport(SERV_IT *serv_item, char *key, int hit) 
 {
     /* record report for relevant server and key */
-    printf("Get report from %s on key %s\n", serv_item->name, key);
     serv_item->serv->hit += hit;
+    printf("Get report from %s on key %s for %dth hit\n", serv_item->name, key, serv_item->serv->hit);
     KV_REPORT *kv_rep;
     HASH_FIND_STR(serv_item->serv->reports, key, kv_rep);
     if (!kv_rep) {
@@ -109,6 +109,7 @@ addreport(SERV_IT *serv_item, char *key, int hit)
     }
     kv_rep->hit += hit;
     total_hit += hit;
+    printf("Total hit number is %d\n", total_hit);
 }
 
 void
