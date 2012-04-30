@@ -37,6 +37,7 @@ enum head
 
 #define STAT_KEY_LEN 128
 #define SERV_ID_LEN 24
+#define SERV_PORT 9000
 
 /* Managing replica status of each object */
 typedef struct replica_stat
@@ -136,7 +137,6 @@ readcb(struct bufferevent *bev, void *ctx)
     struct evbuffer *input, *output;
     char *line, *ip_port;
     size_t n;
-    int i;
     input = bufferevent_get_input(bev);
     output = bufferevent_get_output(bev);
 
@@ -242,8 +242,9 @@ int key_hit_sort(KV_REPORT *a, KV_REPORT *b)
 }
 
 int
-replicate(char *key, UT_array *status, int last_src_index)
+replicate(char *key, UT_array *stats, int last_src_index)
 {
+    move_key_mserver_index(key, stats, SERV_PORT, last_src_index);
     return 1;
 }
 
@@ -366,7 +367,7 @@ rep_adjust(int fd, short event, void *arg)
                 else {
                     /* sth going wrong!! */
                     printf("Server %s not known, error!!\n", *p);
-                    exit -1;
+                    exit(-1);
                 }
             }
             /* do replication */
