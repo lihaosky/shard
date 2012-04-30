@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <errno.h>
+#include <pthread.h>
 
 /* For hashtable, list and dynamic array */
 #include "uthash/uthash.h"
@@ -72,6 +73,7 @@ typedef struct server_item
     UT_hash_handle hh;          /* makes this structure hashable */
 } SERV_IT;
 
+pthread_rwlock_t lock;          /* read_write lock for server hashtable */
 SERV_IT *servers = NULL;        /* declared hashtable for all servers*/
 //KV_REPORT *objects = NULL;      /* decalred hashtable for all objects*/
 
@@ -266,8 +268,10 @@ rep_adjust(int fd, short event, void *arg)
         return;
     }
     
-    float average_hit = (float)total_hit / (float)server_count;
-    float replica_bar = average_hit * 1.1;
+    int average_hit = total_hit / server_count;
+    printf("Average hit per server is %d\n", average_hit);
+    int replica_bar = (int)((float)average_hit * 1.1);
+    printf("Replicate bar is hit %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
     HASH_SORT(servers, server_hit_sort); 
@@ -279,17 +283,18 @@ rep_adjust(int fd, short event, void *arg)
         
         float diff = busy_item->serv->hit - replica_bar;
         if (diff > 0) {
+            printf("Server %s crossed the bar!\n", busy_item->name);
             //potentially very inefficient for now
             //TODO: optimize it later for performance
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
             KV_REPORT * pop_obj;
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
-                if (pop_obj->hit <= 2 * average_hit) {
+                if (pop_obj->hit <= average_hit) {
                     break;      /* done with this busy server */
                 }
                 else {
-                    int need_replica = pop_obj->hit/average_hit - 1;
+                    int need_replica = pop_obj->hit/average_hit; /* at least one */
                     REPLICA_STATUS *pop_status;
                     HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
                     if (!pop_status)
