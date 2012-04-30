@@ -23,6 +23,9 @@
 #include "uthash/utlist.h"
 #include "uthash/utarray.h"
 
+/* For libmemcached */
+#include "util.h"
+
 #define MAX_LINE 16384
 
 /* Traffic head for differen use */
@@ -239,7 +242,7 @@ int key_hit_sort(KV_REPORT *a, KV_REPORT *b)
 }
 
 int
-replicate()
+replicate(char *key, UT_array *status, int last_src_index)
 {
     return 1;
 }
@@ -248,20 +251,29 @@ void
 rep_adjust(int fd, short event, void *arg) 
 {
     printf("Rep adjusted!\n");
-    
+
     //Calculate and adjust replicas:
     //1. get average load of servers, keep replicating the most popular items
     //from the most popular server to least popular server until no one is
     //10% higher than average
     //2. in every step calculation the number of replicas is doubled
     int server_count = HASH_COUNT(servers);
+    
+    if (server_count == 0) {
+        /* no server to maintain */
+        return;
+    }
+    
     float average_hit = (float)total_hit / (float)server_count;
     float replica_bar = average_hit * 1.1;
 
-    HASH_SORT(servers, server_hit_sort);   /* sort servers based on their hit cnt */
-    
+    /* sort servers based on their hit cnt */
+    HASH_SORT(servers, server_hit_sort); 
+
     SERV_IT *busy_item, *casual_item;
-    for(busy_item = servers; busy_item != NULL; busy_item=busy_item->hh.next) {
+    int pop_obj_cnt = 0;
+    /* find pop object, and calculate number of replicas in need*/
+    for(busy_item = servers; busy_item != NULL; busy_item = busy_item->hh.next) {
         
         float diff = busy_item->serv->hit - replica_bar;
         if (diff > 0) {
@@ -272,26 +284,95 @@ rep_adjust(int fd, short event, void *arg)
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
                 if (pop_obj->hit <= 2 * average_hit) {
-                    break;
+                    break;      /* done with this busy server */
                 }
-                int need_replica = pop_obj->hit/average_hit - 1;
-                REPLICA_STATUS *pop_status;
-                HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
-                if (!pop_status) {
-                    pop_status = malloc(sizeof(REPLICA_STATUS));
-                    memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
-                    pop_status->old_index = 0;
-                    pop_status->replica_cnt = 1;
-                    utarray_new(pop_status->replicas,&ut_str_icd);
-                    char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
-                    memcpy(rep_name, busy_item->name, SERV_ID_LEN);
-                    utarray_push_back(pop_status->replicas, rep_name);
-                    HASH_ADD_STR(replica_stats, kname, pop_status);
+                else {
+                    int need_replica = pop_obj->hit/average_hit - 1;
+                    REPLICA_STATUS *pop_status;
+                    HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
+                    if (!pop_status)
+                    {
+                        pop_status = malloc(sizeof(REPLICA_STATUS));
+                        memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
+                        pop_status->old_index = 0;
+                        pop_status->replica_cnt = 1;
+                        utarray_new(pop_status->replicas,&ut_str_icd);
+                        char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
+                        memcpy(rep_name, busy_item->name, SERV_ID_LEN);
+                        utarray_push_back(pop_status->replicas, rep_name);
+                        HASH_ADD_STR(replica_stats, kname, pop_status);
+                    }
+                    pop_status->replica_cnt += need_replica;
+                    pop_obj_cnt += 1;
                 }
-                pop_status->replica_cnt += need_replica;
             }
         }
         casual_item = busy_item;
+    }
+    
+    printf("Need to replicate %d popular objects!\n", pop_obj_cnt);
+    
+    /* exit if no need to do replication */
+    if (pop_obj_cnt == 0) return;
+    
+    /* now to find approriate casual servers to serve as replicas */
+    REPLICA_STATUS *pop_status;
+    bool can_replicate = true;
+    for(pop_status = replica_stats; pop_status != NULL; 
+        pop_status = pop_status->hh.next) {
+        if ( can_replicate == true &&
+            (casual_item == NULL || casual_item->serv->hit >= replica_bar)) {
+            /* if casual_item has been used up */
+            can_replicate = false;
+        }
+        SERV_IT *candidate_item = casual_item;
+        int need = pop_status->replica_cnt-pop_status->old_index-1;
+        while (need != 0 && can_replicate == true) {
+            if ((float)(candidate_item->serv->hit) < replica_bar)
+            {
+                /* add candidate and adjust its hit*/
+                candidate_item->serv->hit += average_hit;
+                char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
+                memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
+                utarray_push_back(pop_status->replicas, rep_name);
+                need--;
+            } else
+            {
+                /* need to update the casual_item to point to less replicated */
+                casual_item = casual_item->hh.prev;
+            }
+            candidate_item = candidate_item->hh.prev;
+            if (candidate_item == NULL || candidate_item->serv->hit >= replica_bar)
+            {
+                /* used up candidates */
+                casual_item = candidate_item;
+                break;
+            }
+        }
+        
+        /* adjust old replica's hit based on new replication */
+        int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
+        /*adjust replica count*/
+        pop_status->replica_cnt = pop_status->old_index + new_replica;
+        if (new_replica != 0) {
+            int i;
+            for(i=0; i<=pop_status->old_index; i++) {
+                char **p = (char **)utarray_eltptr(pop_status->replicas, i);
+                SERV_IT *old_item = NULL;
+                HASH_FIND_STR(servers, *p, old_item);
+                if (old_item != NULL) {
+                    old_item->serv->hit -= average_hit / (pop_status->old_index + 1);
+                }
+                else {
+                    /* sth going wrong!! */
+                    printf("Server %s not known, error!!\n", *p);
+                    exit -1;
+                }
+            }
+            /* do replication */
+            replicate(pop_status->kname, pop_status->replicas, pop_status->old_index);
+            pop_status->old_index = pop_status->replica_cnt - 1;
+        }
     }
 }
 
