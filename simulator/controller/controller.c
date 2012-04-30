@@ -249,6 +249,7 @@ int key_hit_sort(KV_REPORT *a, KV_REPORT *b)
 int
 replicate(char *key, UT_array *stats, int last_src_index)
 {
+    printf("Replicating object %s\n", key);
     move_key_mserver_index(key, stats, SERV_PORT, last_src_index);
     return 1;
 }
@@ -342,19 +343,31 @@ rep_adjust(int fd, short event, void *arg)
         if ( can_replicate == true &&
             (casual_item == NULL || casual_item->serv->hit >= replica_bar)) {
             /* if casual_item has been used up */
+            printf("No more load capacity for replication!\n");
             can_replicate = false;
         }
         SERV_IT *candidate_item = casual_item;
         int need = pop_status->replica_cnt-pop_status->old_index-1;
+        printf("Object %s needs %d more replicas\n", pop_status->kname, need);
         while (need != 0 && can_replicate == true) {
-            if ((float)(candidate_item->serv->hit) < replica_bar)
+            if (candidate_item->serv->hit < replica_bar)
             {
-                /* add candidate and adjust its hit*/
-                candidate_item->serv->hit += average_hit;
-                char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
-                memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
-                utarray_push_back(pop_status->replicas, &rep_name);
-                need--;
+                /* check this candidate whether has replica already*/
+                KV_REPORT *report;
+                HASH_FIND_STR(candidate_item->serv->reports, pop_status->kname, 
+                    report);
+                if (report == NULL) {
+                    /* add candidate and adjust its hit*/
+                    candidate_item->serv->hit += average_hit;
+                    char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
+                    memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
+                    utarray_push_back(pop_status->replicas, &rep_name);
+                    need--;
+                    printf("Object %s added replica %s\n", pop_status->kname, rep_name);
+                }
+                else {
+                    printf("***WARNING: Imbalance even for the same key***\n");
+                }
             } else
             {
                 /* need to update the casual_item to point to less replicated */
@@ -371,8 +384,9 @@ rep_adjust(int fd, short event, void *arg)
         
         /* adjust old replica's hit based on new replication */
         int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
+        printf("Object %s found %d more replicas\n", pop_status->kname, new_replica);s
         /*adjust replica count*/
-        pop_status->replica_cnt = pop_status->old_index + new_replica;
+        pop_status->replica_cnt = pop_status->old_index + 1 + new_replica;
         if (new_replica != 0) {
             int i;
             for(i=0; i<=pop_status->old_index; i++) {
