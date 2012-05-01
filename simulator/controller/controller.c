@@ -384,7 +384,7 @@ rep_adjust(int fd, short event, void *arg)
         
         /* adjust old replica's hit based on new replication */
         int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
-        printf("Object %s found %d more replicas\n", pop_status->kname, new_replica);s
+        printf("Object %s found %d more replicas\n", pop_status->kname, new_replica);
         /*adjust replica count*/
         pop_status->replica_cnt = pop_status->old_index + 1 + new_replica;
         if (new_replica != 0) {
@@ -448,7 +448,7 @@ run(void) {
     /* setup timer driver event */
     struct event *timer_ev; 
     timer_ev = event_new(base, -1, EV_PERSIST|EV_TIMEOUT, rep_adjust, NULL);
-    struct timeval tv = {5,0};
+    struct timeval tv = {10,0};
     evtimer_add(timer_ev, &tv);
 
     /* start the main levent loop */
