@@ -80,7 +80,7 @@ int mmove_key(const char * const* key, char *src_host, in_port_t src_port, char 
     memcached_server_st *src_server = NULL;
     memcached_server_st *dest_server = NULL;
     memcached_return rc;
-    
+
     size_t *key_len;
     uint32_t flags;
     int i = 0;
@@ -88,7 +88,7 @@ int mmove_key(const char * const* key, char *src_host, in_port_t src_port, char 
     char return_key[MEMCACHED_MAX_KEY];
     size_t return_key_len;
     size_t return_value_len;
-    
+
     src_memc = memcached_create(NULL);
     dest_memc = memcached_create(NULL);
 
@@ -148,7 +148,7 @@ int mmove_key(const char * const* key, char *src_host, in_port_t src_port, char 
             free(value);
             return 0;
         }
-        
+
         free(value);
     }
 
@@ -159,10 +159,10 @@ int mmove_key(const char * const* key, char *src_host, in_port_t src_port, char 
     return 1;
 }
 
-        
+
 /* Move one key from one source server to multiple destination servers
    Source server hostname and port are in src_host and src_port
-   Destination server hostname and port are in dest_host_ip and 
+   Destination server hostname and port are in dest_host_ip and
    They are splited by ":"
    Return 1 on success
    Return 0 on failure
@@ -212,6 +212,7 @@ int move_key_mserver(char *key, char *src_host, in_port_t src_port, UT_array *de
         dest_port_str = strtok(NULL, ":");
         dest_port = atoi(dest_port_str);
 
+        dest_server[i] = NULL;
         dest_server[i] = memcached_server_list_append(dest_server[i], dest_host, dest_port, &rc);
         rc = memcached_server_push(dest_memc[i], dest_server[i]);
 
@@ -282,7 +283,7 @@ int move_key_mserver_index(char *key, UT_array *dest_host_ip, in_port_t port, in
     int i = 0;
     int j = 0;
     char **line = NULL;
-    char *dest_host; 
+    char *dest_host;
 
     printf("Dest len is %d\n", dest_len);
 
@@ -319,6 +320,7 @@ int move_key_mserver_index(char *key, UT_array *dest_host_ip, in_port_t port, in
 
             printf("Dest ip is %s\n", dest_host);
 
+            dest_server[i - 1 - index] = NULL;
             dest_server[i - 1 - index] = memcached_server_list_append(dest_server[i - 1 - index], dest_host, port, &rc);
             rc = memcached_server_push(dest_memc[i - 1 - index], dest_server[i - 1 - index]);
 
@@ -392,7 +394,7 @@ int mmove_key_mserver(char **key, char *src_host, in_port_t src_port, UT_array *
     memcached_server_st *src_server = NULL;
     memcached_server_st **dest_server = NULL;
     memcached_return rc;
-    
+
     size_t *key_len;
     uint32_t flags;
     int i = 0;
@@ -421,7 +423,7 @@ int mmove_key_mserver(char **key, char *src_host, in_port_t src_port, UT_array *
     if (rc != MEMCACHED_SUCCESS) {
         fprintf(stderr, "Couldn't add source server: %s\n", memcached_strerror(src_memc, rc));
         memcached_free(src_memc);
-        
+
         return 0;
     }
 
@@ -483,7 +485,7 @@ int mmove_key_mserver(char **key, char *src_host, in_port_t src_port, UT_array *
             free(value);
             return 0;
         }
-        
+
         free(value);
     }
 
@@ -494,8 +496,8 @@ int mmove_key_mserver(char **key, char *src_host, in_port_t src_port, UT_array *
     return 1;
 }
 */
-           
 
 
-       
+
+
 
