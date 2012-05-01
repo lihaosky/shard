@@ -93,22 +93,24 @@ addserv(struct bufferevent *bev, char *ip_port)
     return mem_serv_it;
 }
 
-void
-addreport(SERV_IT *serv_item, char *key, int hit) 
+/* Return 1: added new, 0: just updated */
+int
+add_report(SERV_IT *serv_item, char *key, int hit) 
 {
+    int ret = 0;
     /* record report for relevant server and key */
     serv_item->serv->hit += hit;
-    printf("Get report from %s on key %s for %dth hit\n", serv_item->name, key, serv_item->serv->hit);
     KV_REPORT *kv_rep;
     HASH_FIND_STR(serv_item->serv->reports, key, kv_rep);
     if (!kv_rep) {
         kv_rep = malloc(sizeof(KV_REPORT));
         memcpy(kv_rep->kname, key, STAT_KEY_LEN);
         HASH_ADD_STR(serv_item->serv->reports, kname, kv_rep);
+        ret = 1;
     }
     kv_rep->hit += hit;
     total_hit += hit;
-    printf("Total hit number is %d\n", total_hit);
+    return ret;
 }
 
 void
@@ -126,7 +128,9 @@ process_report(struct bufferevent *bev, char *tokens, char *ip_port)
     pthread_rwlock_unlock(&lock);
     char *key = strtok(NULL, ":");
     //TODO: multi key report case
-    addreport(serv_item, key, 1);
+    add_report(serv_item, key, 1);
+    printf("Get report from %s on key %s for %dth hit\n", serv_item->name, key, serv_item->serv->hit);
+    printf("Total hit number is %d\n", total_hit);
 }
 
 void
@@ -280,7 +284,7 @@ rep_adjust(int fd, short event, void *arg)
     
     int average_hit = total_hit / server_count;
     printf("Average hit per server is %d\n", average_hit);
-    int replica_bar = (int)((float)average_hit * 1.1);
+    int replica_bar = (int)((float)average_hit * 1.5);
     printf("Replicate bar is hit %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
@@ -353,10 +357,8 @@ rep_adjust(int fd, short event, void *arg)
             if (candidate_item->serv->hit < replica_bar)
             {
                 /* check this candidate whether has replica already*/
-                KV_REPORT *report;
-                HASH_FIND_STR(candidate_item->serv->reports, pop_status->kname, 
-                    report);
-                if (report == NULL) {
+                int added = add_report(candidate_item, pop_status->kname, 0);
+                if (added == 1) {
                     /* add candidate and adjust its hit*/
                     candidate_item->serv->hit += average_hit;
                     char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
