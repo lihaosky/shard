@@ -1,0 +1,10 @@
+*.out
+*.swo
+*.swp
+*.o
+controller
+*.zip
+*.tar
+*.gz
+*.classpath
+*.project
