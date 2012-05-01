@@ -261,7 +261,7 @@ replicate(char *key, UT_array *stats, int last_src_index)
 void
 rep_adjust(int fd, short event, void *arg) 
 {
-    printf("Rep adjusted!\n");
+    printf("Entering rep_adjust function\n");
 
     //Calculate and adjust replicas:
     //1. get average load of servers, keep replicating the most popular items
@@ -278,14 +278,16 @@ rep_adjust(int fd, short event, void *arg)
     
     if (server_count == 0) {
         /* no server to maintain */
+        printf("----No server to maintain\n");
         pthread_rwlock_unlock(&lock);
         return;
     }
+    printf("----Server #: %d\n", server_count);
     
     int average_hit = total_hit / server_count;
-    printf("Average hit per server is %d\n", average_hit);
+    printf("----Server average hit: %d\n", average_hit);
     int replica_bar = (int)((float)average_hit * 1.5);
-    printf("Replicate bar is hit %d\n", replica_bar);
+    printf("----Imbalance bar hit: %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
     HASH_SORT(servers, server_hit_sort); 
@@ -296,19 +298,23 @@ rep_adjust(int fd, short event, void *arg)
     for(busy_item = servers; busy_item != NULL; busy_item = busy_item->hh.next) {
         
         float diff = busy_item->serv->hit - replica_bar;
+        printf("--------Server %s hit %d\n", busy_item->name, busy_item->serv->hit);
         if (diff > 0) {
-            printf("Server %s crossed the bar!\n", busy_item->name);
+            printf("--------Crossed the bar!\n");
             //potentially very inefficient for now
             //TODO: optimize it later for performance
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
             KV_REPORT * pop_obj;
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
+                printf("--------Key %s hit %d\n", pop_obj->kname, pop_obj->hit);
                 if (pop_obj->hit <= average_hit) {
                     break;      /* done with this busy server */
                 }
                 else {
                     int need_replica = pop_obj->hit/average_hit; /* at least one */
+                    printf("------------Key %s needs %d more replicas\n", 
+                        pop_obj->kname, need_replica);
                     REPLICA_STATUS *pop_status;
                     HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
                     if (!pop_status)
@@ -323,6 +329,8 @@ rep_adjust(int fd, short event, void *arg)
                         utarray_push_back(pop_status->replicas, &rep_name);
                         HASH_ADD_STR(replica_stats, kname, pop_status);
                     }
+                    printf("------------Key %s has %d old replicas\n", 
+                        pop_obj->kname, pop_status->old_index);
                     pop_status->replica_cnt += need_replica;
                     pop_obj_cnt += 1;
                 }
@@ -331,7 +339,7 @@ rep_adjust(int fd, short event, void *arg)
         casual_item = busy_item;
     }
     
-    printf("Need to replicate %d popular objects!\n", pop_obj_cnt);
+    printf("----Need to replicate %d popular objects!\n", pop_obj_cnt);
     
     /* exit if no need to do replication */
     if (pop_obj_cnt == 0) {
@@ -347,12 +355,12 @@ rep_adjust(int fd, short event, void *arg)
         if ( can_replicate == true &&
             (casual_item == NULL || casual_item->serv->hit >= replica_bar)) {
             /* if casual_item has been used up */
-            printf("No more load capacity for replication!\n");
+            printf("--------No more load capacity for replication!\n");
             can_replicate = false;
         }
         SERV_IT *candidate_item = casual_item;
         int need = pop_status->replica_cnt-pop_status->old_index-1;
-        printf("Object %s needs %d more replicas\n", pop_status->kname, need);
+        printf("----Object %s starts finding %d more replicas\n", pop_status->kname, need);
         while (need != 0 && can_replicate == true) {
             if (candidate_item->serv->hit < replica_bar)
             {
@@ -365,10 +373,10 @@ rep_adjust(int fd, short event, void *arg)
                     memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
                     utarray_push_back(pop_status->replicas, &rep_name);
                     need--;
-                    printf("Object %s added replica %s\n", pop_status->kname, rep_name);
+                    printf("--------Added replica %s\n", rep_name);
                 }
                 else {
-                    printf("***WARNING: Imbalance even for the same key***\n");
+                    printf("--------***WARNING: Imbalance even for the same key***\n");
                 }
             } else
             {
@@ -386,7 +394,7 @@ rep_adjust(int fd, short event, void *arg)
         
         /* adjust old replica's hit based on new replication */
         int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
-        printf("Object %s found %d more replicas\n", pop_status->kname, new_replica);
+        printf("----Object %s found %d more replicas\n", pop_status->kname, new_replica);
         /*adjust replica count*/
         pop_status->replica_cnt = pop_status->old_index + 1 + new_replica;
         if (new_replica != 0) {
@@ -400,7 +408,7 @@ rep_adjust(int fd, short event, void *arg)
                 }
                 else {
                     /* sth going wrong!! */
-                    printf("Server %s not known, error!!\n", *p);
+                    printf("--------Server %s not known, error!!\n", *p);
                     exit(-1);
                 }
             }
