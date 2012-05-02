@@ -101,7 +101,7 @@ public abstract class MemcachedDB
 	 */
 	public abstract boolean delete(String key);
 	
-	public abstract net.rubyeye.xmemcached.MemcachedClient getClient();
+	public abstract int getAccessedServerID();
 	
 	/**
 	 * Increment key read number

@@ -28,6 +28,7 @@ import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
@@ -370,7 +371,7 @@ public class MemcachedClient
 		System.out.println("                  values in the propertyfile");
 		System.out.println("  -s:  show status during run (default: no status)");
 		System.out.println("  -l label:  use label for status (e.g. to label one experiment out of a whole batch)");
-		System.out.println("");
+		System.out.println("  -c controllerhostname:controllerport: sepcify controller hostname and port number");
 		System.out.println("Required properties:");
 		System.out.println("");
 		System.out.println("To run the transaction phase from multiple servers, start a separate client on each.");
@@ -474,7 +475,9 @@ public class MemcachedClient
 		int target=0;                           //Throughput per second of all clients
 		boolean status=false;
 		String label="";
-
+		String controllerHost = null;
+		int controllerPort = 0;
+		
 		//parse arguments
 		int argindex=0;
 
@@ -530,6 +533,14 @@ public class MemcachedClient
 				else if (args[argindex].compareTo("-s")==0)
 				{
 					status=true;
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-c") == 0) {
+					argindex++;
+					String line = args[argindex];
+					String[] tokens = line.split(":");
+					controllerHost = tokens[0];
+					controllerPort = Integer.parseInt(tokens[1]);
 					argindex++;
 				}
 				//Database client to use
@@ -738,22 +749,27 @@ public class MemcachedClient
 		
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
-			net.rubyeye.xmemcached.MemcachedClient mclient = null;
-			try {
-				mclient = new net.rubyeye.xmemcached.XMemcachedClient();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			Vector<net.rubyeye.xmemcached.MemcachedClient> mclients = new Vector<net.rubyeye.xmemcached.MemcachedClient>();
+			HashMap<String, Integer> hostClientMap = new HashMap<String, Integer>();
 			
+			int i = 0;
 			for (HostPort hp : hostPortList) {
+				net.rubyeye.xmemcached.MemcachedClient mclient = null;
+				try {
+					mclient = new net.rubyeye.xmemcached.XMemcachedClient();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 				try {
 					mclient.addServer(hp.host, hp.port);
 				} catch (IOException e) {
 					e.printStackTrace();
 				}
+				mclients.add(mclient);
+				hostClientMap.put(hp.host, i++);
 			}
 			
-			MemcachedDB db = new MemcachedDBClient(mclient);   //Need to set the latency for db...
+			MemcachedDB db = new MemcachedDBClient(mclients, hostClientMap, controllerHost, controllerPort);   //Need to set the latency for db...
 			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);

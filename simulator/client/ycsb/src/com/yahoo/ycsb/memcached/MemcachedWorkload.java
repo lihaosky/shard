@@ -10,6 +10,7 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import java.util.HashMap;
+import net.rubyeye.xmemcached.impl.*;
 
 /**
  * The core benchmark scenario. Represents a set of clients doing simple CRUD operations. The relative 
@@ -29,6 +30,9 @@ import java.util.HashMap;
  */
 public class MemcachedWorkload
 {
+	/**
+	 * Write lock to synchronize inserting to initkeymap
+	 */
 	private Object writeLock = new Object();
 	
 	private boolean isFirst = true;
@@ -301,7 +305,7 @@ public class MemcachedWorkload
 		long t2 = System.currentTimeMillis();
 		int time = (int)(t2 - t1);
 		
-		int serverNum = db.getClient().findServerNumByKey(key);
+		int serverNum = db.getAccessedServerID();
 		db.incrementKeyReadNum(keynum);
 		db.incrementServerReadNum(serverNum);
 		db.incrementServerLatency(serverNum, time);
@@ -356,7 +360,7 @@ public class MemcachedWorkload
 		
 		int time = (int)(t2 - t1);
 		
-		int serverNum = db.getClient().findServerNumByKey(stringKey);
+		int serverNum = db.getAccessedServerID();
 		db.incrementKeyReadNum(keynum);
 		db.incrementServerReadNum(serverNum);
 		db.incrementServerLatency(serverNum, time);
