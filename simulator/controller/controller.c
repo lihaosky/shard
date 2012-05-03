@@ -137,17 +137,42 @@ void
 process_fetch(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
     //TODO: send replication info
+    if (pthread_rwlock_rdlock(&lock) != 0) {
+        fprintf(stderr,"can't acquire read lock\n");
+        exit(-1);
+    }
+    
+    struct evbuffer *output;
+    output = bufferevent_get_output(bev);
+    
+    REPLICA_STATUS *stats;
+    /* every key is fetched as key:rep1,rep2,...,repN\r\n */
+    for (stats = replica_stats; stats != NULL; stats = stats->hh.next) {
+        evbuffer_add_printf(output, "%s:", stats->kname);
+        char **p = NULL;
+        int i = 0;
+        while ( (p=(char**)utarray_next(stats->replicas,p))) {
+            if (i != 0) {
+                evbuffer_add_printf(output, ",");
+            }
+            evbuffer_add_printf(output, "%s", *p);
+            i++;
+        }
+        evbuffer_add_printf(output, "\r\n");
+    }
+    /* empty line indicates terminate */
+    evbuffer_add_printf(output, "\r\n");
+    pthread_rwlock_unlock(&lock);
 }
 
 /* Callback functions for events */
 void
 readcb(struct bufferevent *bev, void *ctx) 
 {
-    struct evbuffer *input, *output;
+    struct evbuffer *input;
     char *line, *ip_port;
     size_t n;
     input = bufferevent_get_input(bev);
-    output = bufferevent_get_output(bev);
 
     ip_port = (char *)ctx;
     while ((line = evbuffer_readln(input, &n, EVBUFFER_EOL_CRLF))) {
