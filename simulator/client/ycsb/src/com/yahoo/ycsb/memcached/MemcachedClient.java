@@ -43,8 +43,6 @@ import com.yahoo.ycsb.measurements.exporter.TextMeasurementsExporter;
 
 /**
  * A thread to periodically show the status of the experiment, to reassure you that progress is being made.
- * 
- * @author cooperb
  *
  */
 class StatusThread extends Thread
@@ -445,6 +443,10 @@ public class MemcachedClient
 		}
 	}
 	
+	/**
+	 * Read server hostname and port number list from "hostlist.txt" file
+	 * @return
+	 */
 	public static ArrayList<HostPort> getHostPortMap() {
 		ArrayList<HostPort> hostPortList = new ArrayList<HostPort>();
 		

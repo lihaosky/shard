@@ -10,7 +10,6 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import java.util.HashMap;
-import net.rubyeye.xmemcached.impl.*;
 
 /**
  * The core benchmark scenario. Represents a set of clients doing simple CRUD operations. The relative 

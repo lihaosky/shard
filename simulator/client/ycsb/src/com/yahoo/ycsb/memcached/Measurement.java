@@ -11,6 +11,11 @@ import java.util.Map.Entry;
 import java.util.Vector;
 import java.util.Iterator;;
 
+/**
+ * Class to do measurement
+ * @author lihao
+ *
+ */
 public class Measurement {
 	public static void report(Vector<MemcachedDB> dbs) {
 		HashMap<Integer, Value> keyReadNumMap = null;
@@ -43,10 +48,6 @@ public class Measurement {
 		ArrayList<Map.Entry<Integer, Value>> keyReadNumList = sortMapByValue(keyReadNumMap);
 	
 		HashMap<Integer, Value> serverReadNumMap = null;
-		/**
-		 * Aggregate all the db key read number list
-		 */
-		int p = 0;
 		for (MemcachedDB db : dbs) {
 			HashMap<Integer, Value> tmpMap = db.getServerReadNumMap();
 			

@@ -5,7 +5,7 @@ import java.util.Properties;
 import com.yahoo.ycsb.DBException;
 
 /**
-
+ * Abstract memcached database
  */
 public abstract class MemcachedDB
 {

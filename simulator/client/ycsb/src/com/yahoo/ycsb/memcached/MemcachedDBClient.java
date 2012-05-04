@@ -1,15 +1,12 @@
 package com.yahoo.ycsb.memcached;
 
 import java.io.BufferedReader;
-import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.HashMap;
-import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 import java.util.concurrent.ConcurrentHashMap;
@@ -46,7 +43,6 @@ public class MemcachedDBClient extends MemcachedDB {
 	 * Initialization
 	 */
 	public void init() throws DBException {
-		Properties prop = super.getProperties();
 	}
 	
 	/**
