@@ -65,6 +65,7 @@ typedef struct server
     struct bufferevent *bev;
     KV_REPORT *reports;         /* hashtable for key report */
     int hit;
+    int target_hit;
 } SERVER;
 typedef struct server_item 
 {
@@ -85,6 +86,7 @@ addserv(struct bufferevent *bev, char *ip_port)
     SERVER *mem_serv = malloc(sizeof(SERVER));
     mem_serv->bev = bev;
     mem_serv->hit = 0;
+    mem_serv->target_hit = 0;   /* used by load calculation for replication */
     mem_serv->reports = NULL;
     SERV_IT *mem_serv_it = malloc(sizeof(SERV_IT));
     mem_serv_it->serv = mem_serv;
@@ -111,6 +113,9 @@ add_report(SERV_IT *serv_item, char *key, int hit)
     }
     kv_rep->hit += hit;
     total_hit += hit;
+    if (hit > 0) {
+        printf("....on key %.5s", key);
+    }
     return ret;
 }
 
@@ -129,20 +134,21 @@ process_report(struct bufferevent *bev, char *tokens, char *ip_port)
         serv_item = addserv(bev, ip_port);
     }
     
+    printf("Report from %s for %dth hit\n", serv_item->name, 
+        serv_item->serv->hit);
+    
     char *key = strtok(NULL, ":");
     add_report(serv_item, key, 1);
     
     pthread_rwlock_unlock(&lock);
-    
-    printf("Get report from %s on key %.5s for %dth hit\n", serv_item->name, key, 
-        serv_item->serv->hit);
-    printf("Total hit number is %d\n", total_hit);
+    //printf("Total hit number is %d\n", total_hit);
 }
 
 void
 process_fetch(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
-    //TODO: send replication info
+    printf("Process Fetch request from client %s\n", ip_port);
+    
     if (pthread_rwlock_rdlock(&lock) != 0) {
         fprintf(stderr,"can't acquire read lock\n");
         exit(-1);
@@ -212,17 +218,23 @@ errorcb(struct bufferevent *bev, short error, void *ctx)
         /* connection has been closed, do any clean up here */
         /* ... */        
         char *ip_port = (char *)ctx;
+        printf("========Server %s failed!========\n", ip_port);
 
         /* remove server from hashmap */
+        if (pthread_rwlock_rdlock(&lock) != 0) {
+            fprintf(stderr,"can't acquire read lock\n");
+            exit(-1);
+        }
         SERV_IT *serv_item;
         HASH_FIND_STR(servers, ip_port, serv_item);
         if (serv_item) {
+            total_hit -= serv_item->serv->hit;
             HASH_DEL(servers, serv_item);
-            //free(serv_item->serv);
-            //free(serv_item->name);
+            free(serv_item->serv);
             free(serv_item);
         }
         free(ip_port);
+        pthread_rwlock_unlock(&lock);
 
     } else if (error & BEV_EVENT_ERROR) {
         /* check errno to see what error occurred */
@@ -334,37 +346,48 @@ rep_adjust(int fd, short event, void *arg)
             printf("--------Crossed the bar!\n");
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
             KV_REPORT * pop_obj;
+            int pop_rank = 0;
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
+                pop_rank++;
                 printf("--------Key %.5s hit %d\n", pop_obj->kname, pop_obj->hit);
+                int need_replica = 0;
                 if (pop_obj->hit <= average_hit) {
-                    break;      /* done with this busy server */
+                    if (pop_rank > 1) {
+                        break;              /* done with this busy server */
+                    }
+                    else {
+                        need_replica = 1;   /* still replicate the most pop one*/
+                    }
                 }
                 else {
-                    int need_replica = pop_obj->hit/average_hit; /* at least one */
-                    printf("------------Key %.5s needs %d more replicas\n", 
-                        pop_obj->kname, need_replica);
-                    REPLICA_STATUS *pop_status;
-                    HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
-                    if (!pop_status)
-                    {
-                        pop_status = malloc(sizeof(REPLICA_STATUS));
-                        memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
-                        pop_status->old_index = 0;
-                        pop_status->replica_cnt = 1;
-                        utarray_new(pop_status->replicas, &ut_str_icd);
-                        char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
-                        memcpy(rep_name, busy_item->name, SERV_ID_LEN);
-                        utarray_push_back(pop_status->replicas, &rep_name);
-                        HASH_ADD_STR(replica_stats, kname, pop_status);
-                    }
-                    printf("------------Key %.5s has %d old replicas\n", 
-                        pop_obj->kname, pop_status->old_index);
-                    pop_status->replica_cnt += need_replica;
-                    pop_obj_cnt += 1;
+                    /* replicate based on the load, at least one */
+                    need_replica = pop_obj->hit/average_hit; 
                 }
+                printf("------------Key %.5s needs %d more replicas\n",
+                       pop_obj->kname, need_replica);
+                REPLICA_STATUS *pop_status;
+                HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
+                if (!pop_status)
+                {
+                    pop_status = malloc(sizeof(REPLICA_STATUS));
+                    memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
+                    pop_status->old_index = 0;
+                    pop_status->replica_cnt = 1;
+                    utarray_new(pop_status->replicas, &ut_str_icd);
+                    char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
+                    memcpy(rep_name, busy_item->name, SERV_ID_LEN);
+                    utarray_push_back(pop_status->replicas, &rep_name);
+                    HASH_ADD_STR(replica_stats, kname, pop_status);
+                }
+                printf("------------Key %.5s has %d old replicas\n",
+                       pop_obj->kname, pop_status->old_index);
+                pop_status->replica_cnt += need_replica;
+                pop_obj_cnt += 1;
+                
             }
         }
+        busy_item->serv->target_hit = 0;
         casual_item = busy_item;
     }
     
@@ -389,15 +412,16 @@ rep_adjust(int fd, short event, void *arg)
         }
         SERV_IT *candidate_item = casual_item;
         int need = pop_status->replica_cnt-pop_status->old_index-1;
-        printf("----Object %.5s starts finding %d more replicas\n", pop_status->kname, need);
+        printf("----Object %.5s starts finding %d more replicas\n", 
+            pop_status->kname, need);
         while (need != 0 && can_replicate == true) {
-            if (candidate_item->serv->hit < replica_bar)
-            {
-                /* check this candidate whether has replica already*/
+            if (candidate_item->serv->hit + candidate_item->serv->target_hit 
+                < replica_bar) {
+                /* check whether this candidate has replica already*/
                 int added = add_report(candidate_item, pop_status->kname, 0);
                 if (added == 1) {
-                    /* add candidate and adjust its hit*/
-                    candidate_item->serv->hit += average_hit;
+                    /* add candidate and adjust its extra target hit*/
+                    candidate_item->serv->target_hit += average_hit;
                     char *rep_name = malloc(SERV_ID_LEN * sizeof(char));
                     memcpy(rep_name, candidate_item->name, SERV_ID_LEN);
                     utarray_push_back(pop_status->replicas, &rep_name);
@@ -413,7 +437,9 @@ rep_adjust(int fd, short event, void *arg)
                 casual_item = casual_item->hh.prev;
             }
             candidate_item = candidate_item->hh.prev;
-            if (candidate_item == NULL || candidate_item->serv->hit >= replica_bar)
+            if (candidate_item == NULL || 
+                candidate_item->serv->hit + candidate_item->serv->target_hit 
+                >= replica_bar)
             {
                 /* used up candidates */
                 casual_item = candidate_item;
@@ -421,19 +447,43 @@ rep_adjust(int fd, short event, void *arg)
             }
         }
         
-        /* adjust old replica's hit based on new replication */
+        /* adjust replica's hit based on new replication */
         int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
-        printf("----Object %.5s found %d more replicas\n", pop_status->kname, new_replica);
+        printf("----Object %.5s found %d more replicas\n", pop_status->kname, 
+            new_replica);
         /*adjust replica count*/
         pop_status->replica_cnt = pop_status->old_index + 1 + new_replica;
         if (new_replica != 0) {
             int i;
-            for(i=0; i<=pop_status->old_index; i++) {
+            int old_hit;
+            int new_hit;
+            for(i=0; i<pop_status->replica_cnt; i++) {
                 char **p = (char **)utarray_eltptr(pop_status->replicas, i);
-                SERV_IT *old_item = NULL;
-                HASH_FIND_STR(servers, *p, old_item);
-                if (old_item != NULL) {
-                    old_item->serv->hit -= average_hit / (pop_status->old_index + 1);
+                SERV_IT *item = NULL;
+                HASH_FIND_STR(servers, *p, item);
+                if (item != NULL) {
+                    KV_REPORT *kv_report = NULL;
+                    HASH_FIND_STR(item->serv->reports, pop_status->kname, 
+                        kv_report);
+                    if (kv_report == NULL) {
+                        printf("--------Server %s does not have key %.5s, error!!\n", 
+                            *p, pop_status->kname);
+                        exit (-1);
+                    }
+                    if (i == 0) {
+                        /*set the old hit record*/
+                        old_hit = kv_report->hit;
+                        new_hit = old_hit * (pop_status->old_index + 1) / pop_status->replica_cnt;
+                    }
+                    if (i <= pop_status->old_index){
+                        /* decrease hit of old replicas */
+                        item->serv->hit -= (old_hit - new_hit);
+                    }
+                    else {
+                        /* increase hit of new replicas */
+                        item->serv->hit += (old_hit - new_hit);
+                    }
+                    kv_report->hit = new_hit;
                 }
                 else {
                     /* sth going wrong!! */
