@@ -105,6 +105,7 @@ add_report(SERV_IT *serv_item, char *key, int hit)
     if (!kv_rep) {
         kv_rep = malloc(sizeof(KV_REPORT));
         memcpy(kv_rep->kname, key, STAT_KEY_LEN);
+        kv_rep->hit = 0;
         HASH_ADD_STR(serv_item->serv->reports, kname, kv_rep);
         ret = 1;
     }
