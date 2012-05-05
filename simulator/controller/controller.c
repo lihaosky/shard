@@ -456,6 +456,7 @@ run(void) {
     struct sockaddr_in sin;
     struct event_base *base;
     struct event *listener_event;
+    int flags = 1;
 
     base = event_base_new();
     if (!base)
@@ -467,6 +468,7 @@ run(void) {
 
     /* set up a listening event */
     listener = socket(AF_INET, SOCK_STREAM, 0);
+    setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, (void *)&flags, sizeof(flags));
     evutil_make_socket_nonblocking(listener);
 
     if (bind(listener, (struct sockaddr*)&sin, sizeof(sin)) < 0) {
