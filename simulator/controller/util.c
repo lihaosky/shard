@@ -207,8 +207,10 @@ int move_key_mserver(char *key, char *src_host, in_port_t src_port, UT_array *de
     }
 
     i = 0;
+    char tmp[24];
     while ((line = (char**)utarray_next(dest_host_ip, line)) != NULL) {
-        dest_host = strtok(*line, ":");
+	memcpy(tmp, *line, strlen(*line));
+        dest_host = strtok(tmp, ":");
         dest_port_str = strtok(NULL, ":");
         dest_port = atoi(dest_port_str);
 
@@ -296,9 +298,11 @@ int move_key_mserver_index(char *key, UT_array *dest_host_ip, in_port_t port, in
     }
 
     i = 0;
+    char tmp[24];
     while ((line = (char**)utarray_next(dest_host_ip, line)) != NULL) {
         if (i == index) {
-            dest_host = strtok(*line, ":");
+            memcpy(tmp, *line, strlen(*line));
+            dest_host = strtok(tmp, ":");
             printf("Source ip is %s\n", dest_host);
 
             src_server = memcached_server_list_append(src_server, dest_host, port, &rc);
@@ -316,7 +320,8 @@ int move_key_mserver_index(char *key, UT_array *dest_host_ip, in_port_t port, in
                 return 0;
             }
         } else if (i > index) {
-            dest_host = strtok(*line, ":");
+            memcpy(tmp, *line, strlen(*line));
+            dest_host = strtok(tmp, ":");
 
             printf("Dest ip is %s\n", dest_host);
 
