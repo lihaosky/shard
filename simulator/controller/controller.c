@@ -117,19 +117,24 @@ void
 process_report(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
     SERV_IT *serv_item;
+    
     if (pthread_rwlock_wrlock(&lock) != 0) {
         fprintf(stderr,"can't acquire write lock\n");
         exit(-1);
     }
+    
     HASH_FIND_STR(servers, ip_port, serv_item);
     if (!serv_item) {
         serv_item = addserv(bev, ip_port);
     }
-    pthread_rwlock_unlock(&lock);
+    
     char *key = strtok(NULL, ":");
-    //TODO: multi key report case
     add_report(serv_item, key, 1);
-    printf("Get report from %s on key %s for %dth hit\n", serv_item->name, key, serv_item->serv->hit);
+    
+    pthread_rwlock_unlock(&lock);
+    
+    printf("Get report from %s on key %.5s for %dth hit\n", serv_item->name, key, 
+        serv_item->serv->hit);
     printf("Total hit number is %d\n", total_hit);
 }
 
@@ -194,7 +199,7 @@ readcb(struct bufferevent *bev, void *ctx)
         char buf[1024];
         while (evbuffer_get_length(input)) {
             int n = evbuffer_remove(input, buf, sizeof(buf));
-            // TODO: process data in line
+            // Do nothing means toss this data
         }
     }
 }
@@ -326,19 +331,17 @@ rep_adjust(int fd, short event, void *arg)
         printf("--------Server %s hit %d\n", busy_item->name, busy_item->serv->hit);
         if (diff > 0) {
             printf("--------Crossed the bar!\n");
-            //potentially very inefficient for now
-            //TODO: optimize it later for performance
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
             KV_REPORT * pop_obj;
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
-                printf("--------Key %s hit %d\n", pop_obj->kname, pop_obj->hit);
+                printf("--------Key %.5s hit %d\n", pop_obj->kname, pop_obj->hit);
                 if (pop_obj->hit <= average_hit) {
                     break;      /* done with this busy server */
                 }
                 else {
                     int need_replica = pop_obj->hit/average_hit; /* at least one */
-                    printf("------------Key %s needs %d more replicas\n", 
+                    printf("------------Key %.5s needs %d more replicas\n", 
                         pop_obj->kname, need_replica);
                     REPLICA_STATUS *pop_status;
                     HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
@@ -354,7 +357,7 @@ rep_adjust(int fd, short event, void *arg)
                         utarray_push_back(pop_status->replicas, &rep_name);
                         HASH_ADD_STR(replica_stats, kname, pop_status);
                     }
-                    printf("------------Key %s has %d old replicas\n", 
+                    printf("------------Key %.5s has %d old replicas\n", 
                         pop_obj->kname, pop_status->old_index);
                     pop_status->replica_cnt += need_replica;
                     pop_obj_cnt += 1;
@@ -385,7 +388,7 @@ rep_adjust(int fd, short event, void *arg)
         }
         SERV_IT *candidate_item = casual_item;
         int need = pop_status->replica_cnt-pop_status->old_index-1;
-        printf("----Object %s starts finding %d more replicas\n", pop_status->kname, need);
+        printf("----Object %.5s starts finding %d more replicas\n", pop_status->kname, need);
         while (need != 0 && can_replicate == true) {
             if (candidate_item->serv->hit < replica_bar)
             {
@@ -419,7 +422,7 @@ rep_adjust(int fd, short event, void *arg)
         
         /* adjust old replica's hit based on new replication */
         int new_replica = pop_status->replica_cnt-pop_status->old_index-1-need;
-        printf("----Object %s found %d more replicas\n", pop_status->kname, new_replica);
+        printf("----Object %.5s found %d more replicas\n", pop_status->kname, new_replica);
         /*adjust replica count*/
         pop_status->replica_cnt = pop_status->old_index + 1 + new_replica;
         if (new_replica != 0) {
