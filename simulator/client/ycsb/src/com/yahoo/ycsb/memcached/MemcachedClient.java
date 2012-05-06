@@ -477,6 +477,7 @@ public class MemcachedClient
 		String label="";
 		String controllerHost = null;
 		int controllerPort = 0;
+		boolean connectController = true;
 		
 		//parse arguments
 		int argindex=0;
@@ -533,6 +534,10 @@ public class MemcachedClient
 				else if (args[argindex].compareTo("-s")==0)
 				{
 					status=true;
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-false") == 0) {
+					connectController = false;
 					argindex++;
 				}
 				else if (args[argindex].compareTo("-c") == 0) {
@@ -751,7 +756,7 @@ public class MemcachedClient
 		{
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
 			try {
-				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, true);
+				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, connectController);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
