@@ -114,7 +114,7 @@ add_report(SERV_IT *serv_item, char *key, int hit)
     kv_rep->hit += hit;
     total_hit += hit;
     if (hit > 0) {
-        printf("....on key %.5s", key);
+        printf("....on key %.5s with hit %d\n", key, hit);
     }
     return ret;
 }
@@ -123,40 +123,32 @@ void
 process_report(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
     SERV_IT *serv_item;
-    
     if (pthread_rwlock_wrlock(&lock) != 0) {
         fprintf(stderr,"can't acquire write lock\n");
         exit(-1);
     }
-    
     HASH_FIND_STR(servers, ip_port, serv_item);
     if (!serv_item) {
         serv_item = addserv(bev, ip_port);
     }
-    
-    printf("Report from %s for %dth hit\n", serv_item->name, 
-        serv_item->serv->hit);
-    
+    printf("Report from %s\n", serv_item->name);
     char *key = strtok(NULL, ":");
-    add_report(serv_item, key, 1);
-    
+    int hit = atoi(strtok(NULL, ":"));
+    add_report(serv_item, key, hit);
+    printf("....for %dth hit\n", serv_item->serv->hit);
     pthread_rwlock_unlock(&lock);
-    //printf("Total hit number is %d\n", total_hit);
 }
 
 void
 process_fetch(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
     printf("Process Fetch request from client %s\n", ip_port);
-    
     if (pthread_rwlock_rdlock(&lock) != 0) {
         fprintf(stderr,"can't acquire read lock\n");
         exit(-1);
     }
-    
     struct evbuffer *output;
     output = bufferevent_get_output(bev);
-    
     REPLICA_STATUS *stats;
     /* every key is fetched as key:rep1,rep2,...,repN\r\n */
     for (stats = replica_stats; stats != NULL; stats = stats->hh.next) {
