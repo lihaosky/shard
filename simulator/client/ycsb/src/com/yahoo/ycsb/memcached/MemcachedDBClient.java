@@ -21,22 +21,17 @@ import net.rubyeye.xmemcached.impl.ArrayMemcachedSessionLocator;
 *
 */
 public class MemcachedDBClient extends MemcachedDB {
-	private Vector<net.rubyeye.xmemcached.MemcachedClient> mclients;
-	private HashMap<String, Integer> hostClientMap;
-	private volatile ConcurrentHashMap<String, Vector<String>> keyServerMap;
-	private int lastServerID;
-	private MapFetchThread mft;
+	//private Vector<net.rubyeye.xmemcached.MemcachedClient> mclients;
+	//private Vector<net.spy.memcached.MemcachedClient> mclients;
+	//private HashMap<String, Integer> hostClientMap;
+	//private volatile ConcurrentHashMap<String, Vector<String>> keyServerMap;
 	/**
 	 * Hashing key to server
 	 */
-	private ArrayMemcachedSessionLocator keyServerLocator = new ArrayMemcachedSessionLocator();
+	private net.rubyeye.xmemcached.MemcachedClient mclient;
 	
-	public MemcachedDBClient(Vector<net.rubyeye.xmemcached.MemcachedClient> mclients, HashMap<String, Integer> hostClientMap, String controllerHost, int controllerPort) {
-		this.mclients = mclients;
-		this.hostClientMap = hostClientMap;
-		keyServerMap = new ConcurrentHashMap<String, Vector<String>>();
-		mft = new MapFetchThread(keyServerMap, controllerHost, controllerPort);
-		mft.start();
+	public MemcachedDBClient(net.rubyeye.xmemcached.MemcachedClient mclient) {
+		this.mclient = mclient;
 	}
 	
 	/**
@@ -51,23 +46,8 @@ public class MemcachedDBClient extends MemcachedDB {
 	 */
 	public String read(String key) {
 		String value = null;
-		int serverID;
-		Vector<String> hosts = keyServerMap.get(key);
-		
-		/**
-		 * Find the server
-		 * If not in keyServerMap, find the insertion server
-		 * If in, find a random one in hosts
-		 */
-		if (hosts == null) {
-			serverID = findServerByKey(key);
-		} else {
-			serverID = hostClientMap.get(hosts.get(new Random().nextInt(hosts.size())));
-		}
-		lastServerID = serverID;
-		
 		try {
-			value = mclients.get(serverID).get(key);
+			value = mclient.get(key);
 		} catch (TimeoutException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
@@ -93,14 +73,8 @@ public class MemcachedDBClient extends MemcachedDB {
 	 * @param value Results stored in value
 	 */
 	public boolean insert(String key, String value) {
-		/**
-		 * Find the insertion server by default hashing
-		 */
-		int serverID = findServerByKey(key);
-		lastServerID = serverID;
-		
 		try {
-			return mclients.get(serverID).set(key, 0, value);
+			mclient.set(key, 0, value);
 		} catch (TimeoutException e) {
 			e.printStackTrace();
 		} catch (InterruptedException e) {
@@ -108,7 +82,8 @@ public class MemcachedDBClient extends MemcachedDB {
 		} catch (MemcachedException e) {
 			e.printStackTrace();
 		}
-		return false;
+		
+		return true;
 	}
 
 	/**
@@ -124,30 +99,18 @@ public class MemcachedDBClient extends MemcachedDB {
 	 */
 	public void cleanup() {
 		try {
-			for (net.rubyeye.xmemcached.MemcachedClient mclient : mclients) {
-				mclient.shutdown();
-			}
-			mft.halt();
+			mclient.shutdown();
 		} catch (IOException e) {
 			e.printStackTrace();
 		}
 	}
 	
 	/**
-	 * Find server by key
-	 * Used when the mapping is unknown
-	 * @param key Key
-	 * @return ServerID
-	 */
-	public int findServerByKey(String key) {
-		return (int) keyServerLocator.getHash(mclients.size(), key);
-	}
-	
-	/**
 	 * Return last accessed serverID
 	 */
+
 	public int getAccessedServerID() {
-		return lastServerID;
+		return mclient.lastIndex();
 	}
 }
 
