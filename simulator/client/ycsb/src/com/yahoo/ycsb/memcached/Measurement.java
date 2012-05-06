@@ -119,6 +119,11 @@ public class Measurement {
 		pw1.close();
 	}
 	
+	/**
+	 * Sort a map by its value
+	 * @param map
+	 * @return ArrayList
+	 */
 	private static ArrayList<Map.Entry<Integer, Value>> sortMapByValue(HashMap<Integer,Value> map) {
 		ArrayList<Map.Entry<Integer, Value>> al = new ArrayList<Map.Entry<Integer, Value>>(map.entrySet());
 		Collections.sort(al, new Comparator<Map.Entry<Integer, Value>>() {
@@ -131,4 +136,24 @@ public class Measurement {
 		return al;
 	}
 	
+}
+
+class Value {
+	private int value;
+	
+	public Value(int value) {
+		this.value = value;
+	}
+	
+	public void increment() {
+		value++;
+	}
+	
+	public void incrementBy(int value) {
+		this.value += value;
+	}
+	
+	public int getValue() {
+		return value;
+	}
 }

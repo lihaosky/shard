@@ -146,35 +146,27 @@ public abstract class MemcachedDB
 		}
 	}
 	
+	/**
+	 * Get key read map
+	 * @return
+	 */
 	public HashMap<Integer, Value> getKeyReadNumMap() {
 		return keyReadNumMap;
 	}
 	
+	/**
+	 * Get server read map
+	 * @return
+	 */
 	public HashMap<Integer, Value> getServerReadNumMap() {
 		return serverReadNumMap;
 	}
 	
+	/**
+	 * Get server latency map
+	 * @return
+	 */
 	public HashMap<Integer, Value> getServerLatencyMap() {
 		return serverLatencyMap;
-	}
-}
-
-class Value {
-	private int value;
-	
-	public Value(int value) {
-		this.value = value;
-	}
-	
-	public void increment() {
-		value++;
-	}
-	
-	public void incrementBy(int value) {
-		this.value += value;
-	}
-	
-	public int getValue() {
-		return value;
 	}
 }

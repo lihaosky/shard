@@ -25,18 +25,12 @@ import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.InetSocketAddress;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Enumeration;
-import java.util.HashMap;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
-import java.util.concurrent.TimeoutException;
-
-import net.rubyeye.xmemcached.exception.MemcachedException;
-
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
@@ -755,15 +749,9 @@ public class MemcachedClient
 		
 		for (int threadid=0; threadid<threadcount; threadid++)
 		{
-			//Vector<net.rubyeye.xmemcached.MemcachedClient> mclients = new Vector<net.rubyeye.xmemcached.MemcachedClient>();
-			//Vector<net.spy.memcached.MemcachedClient> mclients = new Vector<net.spy.memcached.MemcachedClient>();
-			HashMap<String, Integer> hostClientMap = new HashMap<String, Integer>();
-			
-			int i = 0;
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
 			try {
 				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, true);
-				//mclient = new net.spy.memcached.MemcachedClient(new InetSocketAddress(hp.host, hp.port));
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -776,7 +764,7 @@ public class MemcachedClient
 				}
 			}
 			
-			MemcachedDB db = new MemcachedDBClient(mclient);   //Need to set the latency for db...
+			MemcachedDB db = new MemcachedDBClient(mclient);
 			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);

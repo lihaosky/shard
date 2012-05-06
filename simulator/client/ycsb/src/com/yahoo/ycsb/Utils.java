@@ -41,6 +41,9 @@ public class Utils
           } else {
             buf[i] = (byte)((buf[i] % interval) + '!');
           }
+          if (buf[i] == ':' || buf[i] == ',') {
+        	  buf[i] = 'a';
+          }
         }
         return new String(buf);
       }
