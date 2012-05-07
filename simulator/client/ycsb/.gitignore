@@ -6,5 +6,4 @@ controller
 *.zip
 *.tar
 *.gz
-.classpath
 *.project
