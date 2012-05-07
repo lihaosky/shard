@@ -36,7 +36,7 @@ enum head
     FETCH
 };
 
-#define STAT_KEY_LEN 128
+#define STAT_KEY_LEN 129
 #define SERV_ID_LEN 24
 #define SERV_PORT 9000
 
@@ -102,11 +102,11 @@ add_report(SERV_IT *serv_item, char *key, int hit)
     int ret = 0;
     /* record report for relevant server and key */
     serv_item->serv->hit += hit;
-    KV_REPORT *kv_rep;
+    KV_REPORT *kv_rep = NULL;
     HASH_FIND_STR(serv_item->serv->reports, key, kv_rep);
-    if (!kv_rep) {
+    if (kv_rep == NULL) {
         kv_rep = malloc(sizeof(KV_REPORT));
-        memcpy(kv_rep->kname, key, STAT_KEY_LEN);
+        strcpy(kv_rep->kname, key);
         kv_rep->hit = 0;
         HASH_ADD_STR(serv_item->serv->reports, kname, kv_rep);
         ret = 1;
@@ -114,7 +114,7 @@ add_report(SERV_IT *serv_item, char *key, int hit)
     kv_rep->hit += hit;
     total_hit += hit;
     if (hit > 0) {
-        printf("....on key %.5s with hit %d\n", key, hit);
+        //printf("....on key %.5s with hit %d\n", key, hit);
     }
     return ret;
 }
@@ -122,7 +122,7 @@ add_report(SERV_IT *serv_item, char *key, int hit)
 void
 process_report(struct bufferevent *bev, char *tokens, char *ip_port) 
 {
-    SERV_IT *serv_item;
+    SERV_IT *serv_item = NULL;
     if (pthread_rwlock_wrlock(&lock) != 0) {
         fprintf(stderr,"can't acquire write lock\n");
         exit(-1);
@@ -131,11 +131,16 @@ process_report(struct bufferevent *bev, char *tokens, char *ip_port)
     if (!serv_item) {
         serv_item = addserv(bev, ip_port);
     }
-    printf("Report from %s\n", serv_item->name);
+    //printf("Report from %s\n", serv_item->name);
     char *key = strtok(NULL, ":");
-    int hit = atoi(strtok(NULL, ":"));
+    if (key == NULL) return;
+    char *hit_str = strtok(NULL, ":");
+    int hit = 1;
+    if (hit_str != NULL) {
+        hit = atoi(hit_str);
+    }
     add_report(serv_item, key, hit);
-    printf("....for %dth hit\n", serv_item->serv->hit);
+    //printf("....for %dth hit\n", serv_item->serv->hit);
     pthread_rwlock_unlock(&lock);
 }
 
@@ -152,20 +157,25 @@ process_fetch(struct bufferevent *bev, char *tokens, char *ip_port)
     REPLICA_STATUS *stats;
     /* every key is fetched as key:rep1,rep2,...,repN\r\n */
     for (stats = replica_stats; stats != NULL; stats = stats->hh.next) {
-        evbuffer_add_printf(output, "%s:", stats->kname);
+        evbuffer_add_printf(output, "%s\t", stats->kname);
+        printf("%s:", stats->kname);
         char **p = NULL;
         int i = 0;
         while ( (p=(char**)utarray_next(stats->replicas,p))) {
             if (i != 0) {
                 evbuffer_add_printf(output, ",");
+                printf(",");
             }
             evbuffer_add_printf(output, "%s", *p);
+            printf("%s", *p);
             i++;
         }
         evbuffer_add_printf(output, "\r\n");
+        printf("\n");
     }
     /* empty line indicates terminate */
     evbuffer_add_printf(output, "\r\n");
+    printf("\n");
     pthread_rwlock_unlock(&lock);
 }
 
@@ -180,6 +190,7 @@ readcb(struct bufferevent *bev, void *ctx)
 
     ip_port = (char *)ctx;
     while ((line = evbuffer_readln(input, &n, EVBUFFER_EOL_CRLF))) {
+        //printf("Receive line %s\n", line);
         char *tokens = strtok(line, ":");
         switch (atoi(tokens)) {
             case REPORT:
@@ -288,8 +299,11 @@ int key_hit_sort(KV_REPORT *a, KV_REPORT *b)
 int
 replicate(char *key, UT_array *stats, int last_src_index)
 {
-    printf("Replicating object %s\n", key);
+    printf("Replicating object %.5s\n", key);
+    //char *r_key = malloc(128);
+    //strncpy(r_key, key, 128);
     move_key_mserver_index(key, stats, SERV_PORT, last_src_index);
+    //free(r_key);
     return 1;
 }
 
@@ -321,7 +335,7 @@ rep_adjust(int fd, short event, void *arg)
     
     int average_hit = total_hit / server_count;
     printf("----Server average hit: %d\n", average_hit);
-    int replica_bar = (int)((float)average_hit * 1.5);
+    int replica_bar = (int)((float)average_hit * 1.1);
     printf("----Imbalance bar hit: %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
@@ -337,7 +351,7 @@ rep_adjust(int fd, short event, void *arg)
         if (diff > 0) {
             printf("--------Crossed the bar!\n");
             HASH_SORT(busy_item->serv->reports, key_hit_sort);
-            KV_REPORT * pop_obj;
+            KV_REPORT *pop_obj;
             int pop_rank = 0;
             for(pop_obj = busy_item->serv->reports; pop_obj != NULL; 
                 pop_obj=pop_obj->hh.next) {
@@ -358,12 +372,12 @@ rep_adjust(int fd, short event, void *arg)
                 }
                 printf("------------Key %.5s needs %d more replicas\n",
                        pop_obj->kname, need_replica);
-                REPLICA_STATUS *pop_status;
+                REPLICA_STATUS *pop_status = NULL;
                 HASH_FIND_STR(replica_stats, pop_obj->kname, pop_status);
                 if (!pop_status)
                 {
                     pop_status = malloc(sizeof(REPLICA_STATUS));
-                    memcpy(pop_status->kname, pop_obj->kname, STAT_KEY_LEN);
+                    strcpy(pop_status->kname, pop_obj->kname);
                     pop_status->old_index = 0;
                     pop_status->replica_cnt = 1;
                     utarray_new(pop_status->replicas, &ut_str_icd);
@@ -373,7 +387,7 @@ rep_adjust(int fd, short event, void *arg)
                     HASH_ADD_STR(replica_stats, kname, pop_status);
                 }
                 printf("------------Key %.5s has %d old replicas\n",
-                       pop_obj->kname, pop_status->old_index);
+                       pop_obj->kname, (pop_status->old_index + 1));
                 pop_status->replica_cnt += need_replica;
                 pop_obj_cnt += 1;
                 
@@ -455,27 +469,46 @@ rep_adjust(int fd, short event, void *arg)
                 HASH_FIND_STR(servers, *p, item);
                 if (item != NULL) {
                     KV_REPORT *kv_report = NULL;
-                    HASH_FIND_STR(item->serv->reports, pop_status->kname, 
-                        kv_report);
-                    if (kv_report == NULL) {
-                        printf("--------Server %s does not have key %.5s, error!!\n", 
-                            *p, pop_status->kname);
-                        exit (-1);
+                    if (i < pop_status->replica_cnt) {
+                        HASH_FIND_STR(item->serv->reports, pop_status->kname, 
+                            kv_report);
+                        if (kv_report == NULL) {
+                            printf("--------Server %s does not have key %.5s, error!!\n", 
+                                *p, pop_status->kname);
+                            KV_REPORT *cur;
+                            for (cur = item->serv->reports; cur != NULL; 
+                                cur = cur->hh.next) {
+                                printf("-------- Key %.5s\n", cur->kname);
+                                if (strcmp(cur->kname, pop_status->kname) == 0) {
+                                    printf("--------Fuck! I found it!\n");
+                                    kv_report = cur;
+                                    break;
+                                }
+                            }
+                            if (kv_report == NULL) {
+                                printf("--------Shit, still cannot find!\n");
+                                exit (-1);
+                            }
+                        }
                     }
-                    if (i == 0) {
+                    if (i == 0 && kv_report != NULL) {
                         /*set the old hit record*/
+                        printf("----Set average hit\n");
                         old_hit = kv_report->hit;
                         new_hit = old_hit * (pop_status->old_index + 1) / pop_status->replica_cnt;
                     }
                     if (i <= pop_status->old_index){
                         /* decrease hit of old replicas */
+                        printf("----Reduce old replicas' hits\n");
                         item->serv->hit -= (old_hit - new_hit);
                     }
                     else {
                         /* increase hit of new replicas */
                         item->serv->hit += (old_hit - new_hit);
                     }
-                    kv_report->hit = new_hit;
+                    if (kv_report != NULL) {
+                        kv_report->hit = new_hit;
+                    }
                 }
                 else {
                     /* sth going wrong!! */
