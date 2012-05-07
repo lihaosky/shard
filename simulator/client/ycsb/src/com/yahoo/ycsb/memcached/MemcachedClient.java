@@ -368,6 +368,8 @@ public class MemcachedClient
 		System.out.println("  -s:  show status during run (default: no status)");
 		System.out.println("  -l label:  use label for status (e.g. to label one experiment out of a whole batch)");
 		System.out.println("  -c controllerhostname:controllerport: sepcify controller hostname and port number");
+		System.out.println("  -policy [random|round]: specify policy in choose server.");
+		System.out.println("  -i interval: specify interval (seconds) in pulling map");
 		System.out.println("Required properties:");
 		System.out.println("");
 		System.out.println("To run the transaction phase from multiple servers, start a separate client on each.");
@@ -478,6 +480,8 @@ public class MemcachedClient
 		String controllerHost = null;
 		int controllerPort = 0;
 		boolean connectController = true;
+		String policy = "random";
+		int interval = 5;
 		
 		//parse arguments
 		int argindex=0;
@@ -546,6 +550,17 @@ public class MemcachedClient
 					String[] tokens = line.split(":");
 					controllerHost = tokens[0];
 					controllerPort = Integer.parseInt(tokens[1]);
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-i") == 0) {
+					argindex++;
+					String line = args[argindex];
+					interval = Integer.parseInt(line);
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-policy") == 0) {
+					argindex++;
+					policy = args[argindex];
 					argindex++;
 				}
 				//Database client to use
@@ -756,7 +771,7 @@ public class MemcachedClient
 		{
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
 			try {
-				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, connectController);
+				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, connectController, policy, interval);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
