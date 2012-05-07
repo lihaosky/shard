@@ -335,7 +335,7 @@ rep_adjust(int fd, short event, void *arg)
     
     int average_hit = total_hit / server_count;
     printf("----Server average hit: %d\n", average_hit);
-    int replica_bar = (int)((float)average_hit * 1.1);
+    int replica_bar = (int)((float)average_hit * 1.2);
     printf("----Imbalance bar hit: %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
