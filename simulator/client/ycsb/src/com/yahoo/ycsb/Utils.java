@@ -31,15 +31,15 @@ public class Utils
        */
       public static String ASCIIString(int length)
       {
-	 int interval='~'-'!'+1;
+	 int interval='z'-'a'+1;
 	
         byte []buf = new byte[length];
         random.nextBytes(buf);
         for (int i = 0; i < length; i++) {
           if (buf[i] < 0) {
-            buf[i] = (byte)((-buf[i] % interval) + '!');
+            buf[i] = (byte)((-buf[i] % interval) + 'a');
           } else {
-            buf[i] = (byte)((buf[i] % interval) + '!');
+            buf[i] = (byte)((buf[i] % interval) + 'a');
           }
           if (buf[i] == ':' || buf[i] == ',') {
         	  buf[i] = 'a';
