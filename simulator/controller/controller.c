@@ -335,7 +335,7 @@ rep_adjust(int fd, short event, void *arg)
     
     int average_hit = total_hit / server_count;
     printf("----Server average hit: %d\n", average_hit);
-    int replica_bar = (int)((float)average_hit * 1.2);
+    int replica_bar = (int)((float)average_hit * 1.1);
     printf("----Imbalance bar hit: %d\n", replica_bar);
 
     /* sort servers based on their hit cnt */
@@ -564,7 +564,7 @@ run(void) {
     /* setup timer driver event */
     struct event *timer_ev; 
     timer_ev = event_new(base, -1, EV_PERSIST|EV_TIMEOUT, rep_adjust, NULL);
-    struct timeval tv = {10,0};
+    struct timeval tv = {2,0};
     evtimer_add(timer_ev, &tv);
 
     /* start the main levent loop */
