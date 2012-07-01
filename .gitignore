@@ -1,3 +1,5 @@
-.classpath
+*.classpath
+*prefs
 .project
 .settings
+*.tar
