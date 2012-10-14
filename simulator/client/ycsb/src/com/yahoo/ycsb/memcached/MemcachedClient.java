@@ -771,7 +771,7 @@ public class MemcachedClient
 		{
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
 			try {
-				mclient = new net.rubyeye.xmemcached.XMemcachedClient(controllerHost, controllerPort, connectController, policy, interval);
+				mclient = new net.rubyeye.xmemcached.XMemcachedClient(3);
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -784,7 +784,7 @@ public class MemcachedClient
 				}
 			}
 			
-			MemcachedDB db = new MemcachedDBClient(mclient);
+			MemcachedDB db = new MemcachedDBRandomCopyClient(mclient, 3);
 			db.setProperties(props);
 
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
