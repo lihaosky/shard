@@ -31,6 +31,9 @@ import java.util.Enumeration;
 import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
+
+import net.rubyeye.xmemcached.XMemcachedClient;
+
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
@@ -482,6 +485,7 @@ public class MemcachedClient
 		boolean connectController = true;
 		String policy = "random";
 		int interval = 5;
+		int version = 0;
 		
 		//parse arguments
 		int argindex=0;
@@ -573,6 +577,11 @@ public class MemcachedClient
 						System.exit(0);
 					}
 					props.setProperty("db",args[argindex]);
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-version") == 0) {
+					argindex++;
+					version = Integer.parseInt(args[argindex]);
 					argindex++;
 				}
 				//Label output from statusthread
@@ -771,7 +780,13 @@ public class MemcachedClient
 		{
 			net.rubyeye.xmemcached.MemcachedClient mclient = null;
 			try {
-				mclient = new net.rubyeye.xmemcached.XMemcachedClient(3);
+				if (version == 0) {
+					mclient = new net.rubyeye.xmemcached.XMemcachedClient("", 0, false, "", 0);
+				} else if (version == 1) {
+					mclient = new net.rubyeye.xmemcached.XMemcachedClient(3);
+				} else if (version == 2) {
+					
+				}
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
