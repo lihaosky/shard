@@ -1,2 +1,10 @@
-128.84.223.197:9000
-128.84.223.83:9000
+serv1.pop-replica.liveobjects.emulab.net:9999
+serv10.pop-replica.liveobjects.emulab.net:9999
+serv11.pop-replica.liveobjects.emulab.net:9999
+serv12.pop-replica.liveobjects.emulab.net:9999
+serv13.pop-replica.liveobjects.emulab.net:9999
+serv14.pop-replica.liveobjects.emulab.net:9999
+serv15.pop-replica.liveobjects.emulab.net:9999
+serv16.pop-replica.liveobjects.emulab.net:9999
+serv17.pop-replica.liveobjects.emulab.net:9999
+serv18.pop-replica.liveobjects.emulab.net:9999
