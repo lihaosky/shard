@@ -349,15 +349,15 @@ public class MemcachedWorkload
 		String stringKey = Utils.ASCIIString(keylength);
 		String stringValue = Utils.ASCIIString(fieldlength);
 		
-		synchronized (writeLock) {
-			IntKeyMap.put(keynum, stringKey);
-		}
 		
 		long t1 = System.currentTimeMillis();
 		db.insert(stringKey, stringValue);
 		long t2 = System.currentTimeMillis();
-		
 		int time = (int)(t2 - t1);
+		
+		synchronized (writeLock) {
+			IntKeyMap.put(keynum, stringKey);
+		}
 		
 		int serverNum = db.getAccessedServerID();
 		db.incrementKeyReadNum(keynum);
