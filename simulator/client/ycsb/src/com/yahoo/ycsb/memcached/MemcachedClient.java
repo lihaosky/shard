@@ -304,16 +304,16 @@ class ClientThread extends Thread
 			System.exit(0);
 		}
 
-		try
+		/*try
 		{
-			_db.cleanup();
+			//_db.cleanup();
 		}
 		catch (DBException e)
 		{
 			e.printStackTrace();
 			e.printStackTrace(System.out);
 			return;
-		}
+		}*/
 	}
 }
 
@@ -825,6 +825,14 @@ public class MemcachedClient
 			}
 		}
 
+		for (MemcachedDB db : dbs) {
+			try {
+				db.cleanup();
+			} catch (DBException e) {
+				e.printStackTrace();
+			}
+		}
+		
 		Measurement.report(dbs);
 		
 		long en=System.currentTimeMillis();
