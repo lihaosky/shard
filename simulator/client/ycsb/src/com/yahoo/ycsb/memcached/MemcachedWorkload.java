@@ -1,6 +1,12 @@
 package com.yahoo.ycsb.memcached;
 
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.util.Properties;
+import java.util.Vector;
+
 import com.yahoo.ycsb.*;
 import com.yahoo.ycsb.generator.CounterGenerator;
 import com.yahoo.ycsb.generator.DiscreteGenerator;
@@ -10,7 +16,7 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import java.util.HashMap;
-
+import com.yahoo.ycsb.util.*;
 /**
  * The core benchmark scenario. Represents a set of clients doing simple CRUD operations. The relative 
  * proportion of different kinds of operations, and other properties of the workload, are controlled
@@ -149,6 +155,35 @@ public class MemcachedWorkload
 	int recordcount;
 	
 	/**
+	 * If operations are from file
+	 */
+	boolean isFromFile = false;
+	/**
+	 * Operations loaded from file
+	 */
+	Vector<Operation> operations;
+	/**
+	 * Indicated if a key is successfully inserted
+	 */
+	HashMap<String, Integer> isInserted;
+	/**
+	 * Next operation from vector
+	 */
+	int seq = 0;
+	/**
+	 * Total number of operations
+	 */
+	int opcount = 0;
+	/**
+	 * Read count
+	 */
+	int readCount = 0;
+	/**
+	 * Insert count
+	 */
+	int insertCount = 0;
+	
+	/**
 	 * Initialize the scenario. 
 	 * Called once, in the main client thread, before any operations are started.
 	 */
@@ -247,29 +282,98 @@ public class MemcachedWorkload
 	 */
 	public boolean doTransaction(MemcachedDB db, Object threadstate)
 	{
-		String op=operationchooser.nextString();
-		
-		if (isFirst) {
-			op = "INSERT";
-			isFirst = false;
+		/**
+		 * From file
+		 */
+		if (isFromFile) {
+			Operation op = nextOperation();
+			if (op == null) {
+				return false;
+			}
+			if (op.operation.compareTo(Operation.READ) == 0) {
+				transactionRead(db, op);
+				synchronized (this) {
+					readCount++;
+				}
+			} else if (op.operation.compareTo(Operation.INSERT) == 0) {
+				transactionInsert(db, op);
+				synchronized (this) {
+					insertCount++;
+				}
+			} else if (op.operation.compareTo(Operation.UPDATE) == 0) {
+				transactionUpdate(db, op);
+			}
+		} else {
+			String op=operationchooser.nextString();
+			
+			if (isFirst) {
+				op = "INSERT";
+				isFirst = false;
+			}
+			
+			if (op.compareTo("READ")==0)
+			{
+				doTransactionRead(db);
+				synchronized (this) {
+					readCount++;
+				}
+			}
+			else if (op.compareTo("UPDATE")==0)
+			{
+				doTransactionUpdate(db);
+			}
+			else if (op.compareTo("INSERT")==0)
+			{
+				doTransactionInsert(db);
+				synchronized (this) {
+					insertCount++;
+				}
+			}
 		}
-		
-		if (op.compareTo("READ")==0)
-		{
-			doTransactionRead(db);
-		}
-		else if (op.compareTo("UPDATE")==0)
-		{
-			doTransactionUpdate(db);
-		}
-		else if (op.compareTo("INSERT")==0)
-		{
-			doTransactionInsert(db);
-		}
-		
 		return true;
 	}
 
+	/**
+	 * Read from db
+	 * @param db DB
+	 * @param op Operation
+	 */
+	public void transactionRead(MemcachedDB db, Operation op) {
+		// Wait until the key is successfully inserted
+		while (!isInserted.containsKey(op.key));
+		long t1 = System.currentTimeMillis();
+		db.read(op.key);
+		long t2 = System.currentTimeMillis();
+		int time = (int)(t2 - t1);
+		
+		int serverNum = db.getAccessedServerID();
+		db.incrementServerReadNum(serverNum);
+		db.incrementServerLatency(serverNum, time);
+	}
+	
+	/**
+	 * Insert into DB
+	 * @param db DB
+	 * @param op Operation
+	 */
+	public void transactionInsert(MemcachedDB db, Operation op) {
+		long t1 = System.currentTimeMillis();
+		db.insert(op.key, op.value);
+		long t2 = System.currentTimeMillis();
+		int time = (int)(t2 - t1);
+		
+		synchronized (this) {
+			isInserted.put(op.key, 1);
+		}
+		
+		int serverNum = db.getAccessedServerID();
+		db.incrementServerReadNum(serverNum);
+		db.incrementServerLatency(serverNum, time);
+	}
+	
+	public void transactionUpdate(MemcachedDB db, Operation op) {
+		
+	}
 	/**
 	 * Read
 	 * @param db Database
@@ -363,6 +467,72 @@ public class MemcachedWorkload
 		db.incrementKeyReadNum(keynum);
 		db.incrementServerReadNum(serverNum);
 		db.incrementServerLatency(serverNum, time);
+	}
+	
+	/**
+	 * Load operation from file
+	 * @param fileName File name
+	 * @return false if fails. Otherwise true
+	 */
+	public boolean loadOperations(String fileName) {
+		isFromFile = true;
+		operations = new Vector<Operation>();
+		isInserted = new HashMap<String, Integer>();
+		ObjectInputStream ois;
+		
+		try {
+			ois = new ObjectInputStream(new FileInputStream(fileName));
+		} catch (FileNotFoundException e1) {
+			e1.printStackTrace();
+			return false;
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			return false;
+		} 
+		LoadSummary ld;
+		try {
+			ld = (LoadSummary)ois.readObject();
+		} catch (IOException e1) {
+			e1.printStackTrace();
+			return false;
+		} catch (ClassNotFoundException e1) {
+			e1.printStackTrace();
+			return false;
+		}
+		ld.printSummary();
+		
+		while (true) {
+			try {
+				Operation op = (Operation)ois.readObject();
+				operations.add(op);
+				opcount++;
+			} catch (java.io.EOFException e) {
+				break;
+			} catch (IOException e) {
+				e.printStackTrace();
+				return false;
+			} catch (ClassNotFoundException e) {
+				e.printStackTrace();
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	/**
+	 * Next operation to perform
+	 * @return
+	 */
+	synchronized public Operation nextOperation() {
+		if (seq >= operations.size()) {
+			return null;
+		}
+		return operations.get(seq++);
+	}
+	
+	public void printSummary() {
+		System.out.println("Read count is " + readCount);
+		System.out.println("Insert count is " + insertCount);
 	}
 }
 

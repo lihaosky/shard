@@ -1,13 +1,10 @@
 package com.yahoo.ycsb.util;
 
 import java.io.BufferedOutputStream;
-import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
 import java.util.HashMap;
 
 import com.yahoo.ycsb.Utils;
@@ -18,7 +15,15 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 
+/**
+ * Generate load and write load into file
+ * @author lihao
+ *
+ */
 public class LoadGenerator {
+	/**
+	 * Usage
+	 */
 	public static void usage() {
 		System.out.println("Usage: java com.yahoo.ycsb.util.LoadGenerator [options]");
 		System.out.println("Options:");
@@ -87,105 +92,15 @@ public class LoadGenerator {
 		ls.printSummary();
 		LoadWriter lw = new LoadWriter(ls);
 		lw.writeLoad();
-		
-		ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ls.outputFilePath));
-		LoadSummary ls1 = (LoadSummary)ois.readObject();
-		ls1.printSummary();
-		do {
-			Operation op;
-			try {
-			op = (Operation)ois.readObject();
-			} catch (java.io.EOFException e) {
-				break;
-			}
-			if (op == null) {
-				break;
-			}
-			System.out.println("Operation is " + op.operation);
-			System.out.println(op.key);
-			if (lw.intKeyMap.containsValue(op.key) == false) {
-				System.out.println("Error");
-			}
-		} while (true);
 	}
 }
+
 
 /**
- * Load Summary
- * @author lihaosky
+ * Write load into file
+ * @author lihao
  *
  */
-class LoadSummary implements Serializable {
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
-	/**
-	 * Read rate
-	 */
-	public double readProp;
-	/**
-	 * Write rate
-	 */
-	public double writeProp;
-	/**
-	 * Update rate
-	 */
-	public double updateProp;
-	/**
-	 * Key length
-	 */
-	public int keyLength;
-	/**
-	 * Value length
-	 */
-	public int valueLength;
-	/**
-	 * Distribution
-	 */
-	public String distribution;
-	/**
-	 * Operation number
-	 */
-	public int operationCount;
-	/**
-	 * Output file path
-	 */
-	public String outputFilePath;
-	
-	/**
-	 * Constructor
-	 * @param readProp
-	 * @param writeProp
-	 * @param updateProp
-	 * @param distribution
-	 * @param operationCount
-	 */
-	public LoadSummary(double readProp, double writeProp, double updateProp, int keyLength, int valueLength, String distribution, int operationCount, String outputFilePath) {
-		this.readProp = readProp;
-		this.writeProp = writeProp;
-		this.updateProp = updateProp;
-		this.distribution = distribution;
-		this.operationCount = operationCount;
-		this.keyLength = keyLength;
-		this.valueLength = valueLength;
-		this.outputFilePath = outputFilePath;
-	}
-	
-	/**
-	 * Print summary
-	 */
-	public void printSummary() {
-		System.out.println("Totally " + operationCount + " operations");
-		System.out.println("Read rate: " + readProp);
-		System.out.println("Write rate: " + writeProp);
-		System.out.println("Update rate: " + updateProp);
-		System.out.println("Key length is " + keyLength);
-		System.out.println("Value length is " + valueLength);
-		System.out.println("Distribution: " + distribution);
-	}
-}
-
 class LoadWriter {
 	private LoadSummary ls;
 	private DiscreteGenerator operationchooser;
@@ -194,6 +109,10 @@ class LoadWriter {
 	public HashMap<Integer, String> intKeyMap;
 	private boolean isFirst = true;
 	
+	/**
+	 * Constructor
+	 * @param ls load summary
+	 */
 	public LoadWriter(LoadSummary ls) {
 		this.ls = ls;
 		operationchooser=new DiscreteGenerator();
@@ -223,6 +142,11 @@ class LoadWriter {
 		intKeyMap = new HashMap<Integer, String>();
 	}
 	
+	/**
+	 * Generate and write load into file
+	 * @throws FileNotFoundException
+	 * @throws IOException
+	 */
 	public void writeLoad() throws FileNotFoundException, IOException {
 		ObjectOutputStream oos = new ObjectOutputStream(new BufferedOutputStream(new FileOutputStream(ls.outputFilePath)));
 		//Write header to file

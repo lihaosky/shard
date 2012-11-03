@@ -37,6 +37,9 @@ src/com/yahoo/ycsb/shard/ShardControllerConnection.java
 src/com/yahoo/ycsb/shard/Connection.java
 src/com/yahoo/ycsb/shard/ShardDBClient.java
 src/com/yahoo/ycsb/shard/CommandType.java
+src/com/yahoo/ycsb/util/Operation.java
+src/com/yahoo/ycsb/util/LoadSummary.java
+src/com/yahoo/ycsb/util/LoadGenerator.java
 src/com/yahoo/ycsb/DB.java
 src/com/yahoo/ycsb/DBWrapper.java
 src/com/yahoo/ycsb/WorkloadException.java

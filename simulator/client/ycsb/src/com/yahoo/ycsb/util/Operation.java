@@ -29,6 +29,12 @@ public class Operation implements Serializable {
 	 */
 	public String value;
 	
+	/**
+	 * Constructor
+	 * @param operation Operation: insert or read
+	 * @param key Key
+	 * @param value Value: for insert
+	 */
 	public Operation(String operation, String key, String value) {
 		this.operation = operation;
 		this.key = key;

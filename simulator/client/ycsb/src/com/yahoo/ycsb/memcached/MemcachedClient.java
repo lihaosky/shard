@@ -478,6 +478,7 @@ public class MemcachedClient
 		int target=0;                           //Throughput per second of all clients
 		boolean status=false;
 		String label="";
+		String fileName = "";
 		int version = 0;
 		
 		//parse arguments
@@ -584,6 +585,15 @@ public class MemcachedClient
 						System.exit(0);
 					}
 					label=args[argindex];
+					argindex++;
+				}
+				else if (args[argindex].compareTo("-f") == 0) {
+					argindex++;
+					if (argindex >= args.length) {
+						usageMessage();
+						System.exit(0);
+					}
+					fileName = args[argindex];
 					argindex++;
 				}
 				//Set property from file
@@ -730,6 +740,13 @@ public class MemcachedClient
 		try
 		{
 			workload.init(props);
+			//Load from file
+			if (!fileName.equals("")) {
+				if (!workload.loadOperations(fileName)) {
+					System.err.println("Error loading file");
+					System.exit(0);
+				}
+			}
 		}
 		catch (WorkloadException e)
 		{
@@ -748,6 +765,9 @@ public class MemcachedClient
 		if (dotransactions)
 		{
 			opcount=Integer.parseInt(props.getProperty(OPERATION_COUNT_PROPERTY,"0"));
+			if (workload.isFromFile) {
+				opcount = workload.opcount;
+			}
 		}
 		else
 		{
@@ -789,9 +809,15 @@ public class MemcachedClient
 				}
 			}
 			
-			MemcachedDB db = new MemcachedDBRandomCopyClient(mclient, 3);
+			MemcachedDB db = null;
+			if (version == 1) {
+			db = new MemcachedDBRandomCopyClient(mclient, 3);
 			db.setProperties(props);
-
+			} else if (version == 0) {
+				db = new MemcachedDBClient(mclient);
+			}
+			db.setProperties(props);
+			
 			Thread t=new ClientThread(db,dotransactions,workload,threadid,threadcount,props,opcount/threadcount,targetperthreadperms);
 
 			threads.add(t);
@@ -839,6 +865,7 @@ public class MemcachedClient
 		}
 		
 		Measurement.report(dbs);
+		workload.printSummary();
 		
 		long en=System.currentTimeMillis();
 
