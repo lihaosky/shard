@@ -32,8 +32,6 @@ import java.util.Properties;
 import java.util.Random;
 import java.util.Vector;
 
-import net.rubyeye.xmemcached.XMemcachedClient;
-
 import com.yahoo.ycsb.DBException;
 import com.yahoo.ycsb.WorkloadException;
 import com.yahoo.ycsb.measurements.Measurements;
@@ -480,11 +478,6 @@ public class MemcachedClient
 		int target=0;                           //Throughput per second of all clients
 		boolean status=false;
 		String label="";
-		String controllerHost = null;
-		int controllerPort = 0;
-		boolean connectController = true;
-		String policy = "random";
-		int interval = 5;
 		int version = 0;
 		
 		//parse arguments
@@ -545,26 +538,23 @@ public class MemcachedClient
 					argindex++;
 				}
 				else if (args[argindex].compareTo("-false") == 0) {
-					connectController = false;
 					argindex++;
 				}
 				else if (args[argindex].compareTo("-c") == 0) {
 					argindex++;
 					String line = args[argindex];
 					String[] tokens = line.split(":");
-					controllerHost = tokens[0];
-					controllerPort = Integer.parseInt(tokens[1]);
+					Integer.parseInt(tokens[1]);
 					argindex++;
 				}
 				else if (args[argindex].compareTo("-i") == 0) {
 					argindex++;
 					String line = args[argindex];
-					interval = Integer.parseInt(line);
+					Integer.parseInt(line);
 					argindex++;
 				}
 				else if (args[argindex].compareTo("-policy") == 0) {
 					argindex++;
-					policy = args[argindex];
 					argindex++;
 				}
 				//Database client to use
