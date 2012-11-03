@@ -7,3 +7,4 @@ controller
 *.tar
 *.gz
 *.project
+bin/*
