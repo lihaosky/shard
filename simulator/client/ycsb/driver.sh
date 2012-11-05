@@ -25,5 +25,5 @@ do
     ((i=$i+1))
 done
 
-java -cp $HOME/client/lib/xmemcached.jar:$HOME/client/lib/spymemcached-2.7.3.jar:$HOME/client/lib/slf4j-api-1.6.4.jar:. com.yahoo.ycsb.memcached.MemcachedClient -p recordcount=0 -p operationcount=$2 -threads $3 $4 -P prop_file.prop
+java -cp ../lib/xmemcached.jar:../lib/spymemcached-2.7.3.jar:../lib/slf4j-api-1.6.4.jar:. com.yahoo.ycsb.memcached.MemcachedClient -p recordcount=0 -p operationcount=$2 -threads $3 $4 -P prop_file.prop -f load
 

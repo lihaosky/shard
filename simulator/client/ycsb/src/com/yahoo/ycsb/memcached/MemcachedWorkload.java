@@ -16,6 +16,8 @@ import com.yahoo.ycsb.generator.ScrambledZipfianGenerator;
 import com.yahoo.ycsb.generator.SkewedLatestGenerator;
 import com.yahoo.ycsb.generator.UniformIntegerGenerator;
 import java.util.HashMap;
+import java.util.concurrent.ConcurrentHashMap;
+
 import com.yahoo.ycsb.util.*;
 /**
  * The core benchmark scenario. Represents a set of clients doing simple CRUD operations. The relative 
@@ -45,7 +47,7 @@ public class MemcachedWorkload
 	/**
 	 * Store int to byte key mapping. For reuse bytes.
 	 */
-	private HashMap<Integer, String> IntKeyMap;
+	private ConcurrentHashMap<Integer, String> IntKeyMap;
 
 	/**
 	 * The name of the property for the length of a field in bytes.
@@ -165,7 +167,7 @@ public class MemcachedWorkload
 	/**
 	 * Indicated if a key is successfully inserted
 	 */
-	HashMap<String, Integer> isInserted;
+	ConcurrentHashMap<String, Integer> isInserted;
 	/**
 	 * Next operation from vector
 	 */
@@ -260,7 +262,7 @@ public class MemcachedWorkload
 			throw new WorkloadException("Unknown distribution \""+requestdistrib+"\"");
 		}
 		
-		IntKeyMap = new HashMap<Integer, String>();
+		IntKeyMap = new ConcurrentHashMap<Integer, String>();
 		
 		printConfig();
 	}
@@ -339,10 +341,22 @@ public class MemcachedWorkload
 	 * @param op Operation
 	 */
 	public void transactionRead(MemcachedDB db, Operation op) {
+		int count = 0;
 		// Wait until the key is successfully inserted
-		while (!isInserted.containsKey(op.key));
+		while (!isInserted.containsKey(op.key)) {
+			if (count == 10) {
+				break;
+			}
+			count++;
+			try {
+				Thread.sleep(10);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+		}
 		long t1 = System.currentTimeMillis();
-		db.read(op.key);
+		//db.read(op.key);
+		System.out.println("Read key " + op.key);
 		long t2 = System.currentTimeMillis();
 		int time = (int)(t2 - t1);
 		
@@ -358,13 +372,12 @@ public class MemcachedWorkload
 	 */
 	public void transactionInsert(MemcachedDB db, Operation op) {
 		long t1 = System.currentTimeMillis();
-		db.insert(op.key, op.value);
+		//db.insert(op.key, op.value);
+		System.out.println("insert key " + op.key);
 		long t2 = System.currentTimeMillis();
 		int time = (int)(t2 - t1);
 		
-		synchronized (this) {
-			isInserted.put(op.key, 1);
-		}
+		isInserted.put(op.key, 1);
 		
 		int serverNum = db.getAccessedServerID();
 		db.incrementServerReadNum(serverNum);
@@ -459,9 +472,7 @@ public class MemcachedWorkload
 		long t2 = System.currentTimeMillis();
 		int time = (int)(t2 - t1);
 		
-		synchronized (writeLock) {
-			IntKeyMap.put(keynum, stringKey);
-		}
+		IntKeyMap.put(keynum, stringKey);
 		
 		int serverNum = db.getAccessedServerID();
 		db.incrementKeyReadNum(keynum);
@@ -477,7 +488,7 @@ public class MemcachedWorkload
 	public boolean loadOperations(String fileName) {
 		isFromFile = true;
 		operations = new Vector<Operation>();
-		isInserted = new HashMap<String, Integer>();
+		isInserted = new ConcurrentHashMap<String, Integer>();
 		ObjectInputStream ois;
 		
 		try {
