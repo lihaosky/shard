@@ -72,6 +72,10 @@ public class LoadGenerator {
 			} else if (args[i].equals("-v")) {
 				i++;
 				valueLength = Integer.parseInt(args[i]);
+			} else if (args[i].equals("-h")) {
+				i++;
+				usage();
+				System.exit(0);
 			}
 		}
 		
