@@ -466,13 +466,13 @@ public class ExWorkload
 	
 	public void printStat(Cache[] db) {
 		for (Map.Entry<String, Integer> entry : keyIDMap.entrySet()) {
-			System.out.print(entry.getValue() + "    ");
+			System.out.print(entry.getValue() + "\t");
 			for (int i = 0; i < db.length; i++) {
 				Value v = db[i].readCountMap.get(entry.getKey());
 				if (v != null) {
-					System.out.print(v.getValue() + "    ");
+					System.out.print(v.getValue() + "\t");
 				} else {
-					System.out.print(0 + "    ");
+					System.out.print(0 + "\t");
 				}
 			}
 			System.out.println();
