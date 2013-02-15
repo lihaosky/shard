@@ -474,7 +474,7 @@ public class Client
 		String label="";
 		String fileName = "";
 		int version = 0;
-		
+		int layer = 2;
 		//parse arguments
 		int argindex=0;
 
@@ -499,6 +499,17 @@ public class Client
 					}
 					int tcount=Integer.parseInt(args[argindex]);
 					props.setProperty("threadcount", tcount+"");
+					argindex++;
+				}
+        else if (args[argindex].compareTo("-layer")==0)
+				{
+					argindex++;
+					if (argindex>=args.length)
+					{
+						usageMessage();
+						System.exit(0);
+					}
+					layer=Integer.parseInt(args[argindex]);
 					argindex++;
 				}
 				//Throughput per second from all the clients
@@ -776,10 +787,10 @@ public class Client
 		}
 		
 		Vector<Thread> threads=new Vector<Thread>();
-		Cache[] cache = new Cache[2];
+		Cache[] cache = new Cache[layer];
 		
-		for (int i = 0; i < 2; i++) {
-			if (i == 1) {
+		for (int i = 0; i < layer; i++) {
+			if (i == layer-1) {
 				cache[i] = new Cache(0, Cache.BACKEND);
 			} else {
 				cache[i] = new Cache(1000, Cache.CACHE);
