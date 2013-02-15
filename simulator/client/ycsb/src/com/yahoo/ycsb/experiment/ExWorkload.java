@@ -31,6 +31,7 @@ public class ExWorkload
 	private ConcurrentHashMap<Integer, String> IntKeyMap;
 	
 	private ConcurrentHashMap<String, Integer> keyIDMap;
+	private ConcurrentHashMap<String, Value> keyCountMap;
 	
 	/**
 	 * The name of the property for the length of a field in bytes.
@@ -249,6 +250,7 @@ public class ExWorkload
 		
 		IntKeyMap = new ConcurrentHashMap<Integer, String>();
 		keyIDMap = new ConcurrentHashMap<String, Integer>();
+		keyCountMap = new ConcurrentHashMap<String, Value>();
 		
 		printConfig();
 	}
@@ -277,6 +279,14 @@ public class ExWorkload
 			Operation op = nextOperation();
 			if (op == null) {
 				return false;
+			}
+			synchronized (this) {
+				Value v = keyCountMap.get(op.key);
+				if (v == null) {
+					keyCountMap.put(op.key, new Value(1));
+				} else {
+					v.increment();
+				}
 			}
 			synchronized (this) {
 				Integer id = keyIDMap.get(op.key);
@@ -466,6 +476,7 @@ public class ExWorkload
 	
 	public void printStat(Cache[] db) {
 		for (Map.Entry<String, Integer> entry : keyIDMap.entrySet()) {
+			System.out.print(keyCountMap.get(entry.getKey()).getValue() + "\t");
 			System.out.print(entry.getValue() + "\t");
 			for (int i = 0; i < db.length; i++) {
 				Value v = db[i].readCountMap.get(entry.getKey());
