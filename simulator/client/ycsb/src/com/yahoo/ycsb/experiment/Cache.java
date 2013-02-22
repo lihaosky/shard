@@ -12,27 +12,27 @@ import com.yahoo.ycsb.DBException;
 public class Cache {
   public static int CACHE = 1;
   public static int BACKEND = 0;
-  
+
   public int cacheSize;    // table size
   public int type;         // Type: cache or backend
   public int usedSize;
-  
+
   public HashMap<String, Value> readCountMap;
   public HashMap<String, String> keyValueMap;
   public List<String> lruList;
-  
+
   public Cache(int cacheSize, int type) {
     this.cacheSize = cacheSize;
     this.type = type;
     usedSize = 0;
   }
-  
+
   public void init() {
     readCountMap = new HashMap<String, Value>();
     keyValueMap = new HashMap<String, String>();
     lruList = new LinkedList<String>();
   }
-  
+
   public synchronized boolean read(String key) {
     String value = keyValueMap.get(key);
     if (value == null) {
@@ -53,7 +53,7 @@ public class Cache {
     }
     return true;
   }
-  
+
   public synchronized boolean insert(String key, String value) {
     keyValueMap.put(key, value);
     Value v = readCountMap.get(key);
@@ -66,7 +66,7 @@ public class Cache {
         String previousKey = lruList.remove(0);
         keyValueMap.remove(previousKey);
         usedSize--;
-      } 
+      }
       lruList.add(key);
     }
     return true;
@@ -75,19 +75,19 @@ public class Cache {
 
 class Value {
   private int value;
-  
+
   public Value(int value) {
     this.value = value;
   }
-  
+
   public void increment() {
     value++;
   }
-  
+
   public void incrementBy(int value) {
     this.value += value;
   }
-  
+
   public int getValue() {
     return value;
   }
